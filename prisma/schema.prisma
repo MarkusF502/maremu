@@ -1,0 +1,295 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum PerfilUsuario {
+  ADMIN
+  VENDEDOR
+}
+
+enum MetodoPagamento {
+  PIX
+  CREDITO
+  DEBITO
+  DINHEIRO
+}
+
+enum StatusVenda {
+  CONCLUIDA
+  CANCELADA
+  DEVOLVIDA
+}
+
+enum TipoMovimentacao {
+  COMPRA
+  VENDA
+  DEVOLUCAO
+  AJUSTE
+}
+
+// ==========================================
+// ENTIDADES PRINCIPAIS (MULTI-TENANT)
+// ==========================================
+
+model Loja {
+  id              String   @id @default(uuid())
+  razaoSocial     String   @map("razao_social")
+  nomeFantasia    String   @map("nome_fantasia")
+  cnpj            String   @unique
+  metaLucroMensal Decimal? @map("meta_lucro_mensal")
+  custoFixoMensal Decimal? @map("custo_fixo_mensal")
+
+  // Relacionamentos
+  usuarios      Usuario[]
+  clientes      Cliente[]
+  categorias    Categoria[]
+  produtos      Produto[]
+  vendas        Venda[]
+  despesas      DespesaAvulsa[]
+  movimentacoes MovimentacaoEstoque[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("lojas")
+}
+
+model Usuario {
+  id            String    @id @default(uuid())
+  lojaId        String    @map("loja_id")
+  nome          String
+  email         String    @unique
+  senhaHash     String?   @map("senha_hash") // Opcional se usar provedores OAuth do NextAuth
+  perfil        PerfilUsuario @default(VENDEDOR)
+
+  // NextAuth.js Fields
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  // Relacionamentos
+  loja          Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  vendas        Venda[]
+  despesas      DespesaAvulsa[]
+  movimentacoes MovimentacaoEstoque[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id       String  @id @default(uuid())
+  lojaId   String  @map("loja_id")
+  nome     String
+  telefone String?
+  email    String?
+
+  // Relacionamentos
+  loja   Loja    @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  vendas Venda[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("clientes")
+}
+
+model Categoria {
+  id     String @id @default(uuid())
+  lojaId String @map("loja_id")
+  nome   String
+
+  // Relacionamentos
+  loja     Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  produtos Produto[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categorias")
+}
+
+// ==========================================
+// CATÁLOGO E ESTOQUE
+// ==========================================
+
+model Produto {
+  id             String  @id @default(uuid())
+  lojaId         String  @map("loja_id")
+  categoriaId    String? @map("categoria_id") // Opcional caso a categoria seja deletada
+  nome           String
+  descricao      String?
+  custoBase      Decimal @map("custo_base")
+  precoVendaBase Decimal @map("preco_venda_base")
+
+  // Relacionamentos
+  loja      Loja         @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  categoria Categoria?   @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  grades    GradeProduto[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("produtos")
+}
+
+model GradeProduto {
+  id                   String   @id @default(uuid())
+  produtoId            String   @map("produto_id")
+  tamanho              String
+  cor                  String
+  quantidadeEstoque    Int      @default(0) @map("quantidade_estoque")
+  custoEspecifico      Decimal? @map("custo_especifico")
+  precoVendaEspecifico Decimal? @map("preco_venda_especifico")
+
+  // Relacionamentos
+  produto       Produto               @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  itensVenda    ItemVenda[]
+  movimentacoes MovimentacaoEstoque[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("grades_produto")
+}
+
+model MovimentacaoEstoque {
+  id               String   @id @default(uuid())
+  lojaId           String   @map("loja_id")
+  gradeProdutoId   String?  @map("grade_produto_id")
+  usuarioId        String?  @map("usuario_id")
+  tipo             TipoMovimentacao
+  quantidade       Int
+  dataMovimentacao DateTime @default(now()) @map("data_movimentacao")
+
+  // Relacionamentos
+  loja         Loja          @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  gradeProduto GradeProduto? @relation(fields: [gradeProdutoId], references: [id], onDelete: SetNull)
+  usuario      Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("movimentacoes_estoque")
+}
+
+// ==========================================
+// VENDAS E FINANCEIRO
+// ==========================================
+
+model Venda {
+  id               String          @id @default(uuid())
+  lojaId           String          @map("loja_id")
+  usuarioId        String?         @map("usuario_id")
+  clienteId        String?         @map("cliente_id")
+  status           StatusVenda     @default(CONCLUIDA)
+  metodoPagamento  MetodoPagamento @map("metodo_pagamento")
+  totalBruto       Decimal         @map("total_bruto")
+  descontoAplicado Decimal         @default(0) @map("desconto_aplicado")
+  totalLucroReal   Decimal         @map("total_lucro_real")
+  dataVenda        DateTime        @default(now()) @map("data_venda")
+
+  // Relacionamentos
+  loja    Loja      @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  usuario Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  cliente Cliente?  @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  itens   ItemVenda[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("vendas")
+}
+
+model ItemVenda {
+  id                    String   @id @default(uuid())
+  vendaId               String   @map("venda_id")
+  gradeProdutoId        String?  @map("grade_produto_id")
+  quantidade            Int
+  precoUnitarioAplicado Decimal  @map("preco_unitario_aplicado")
+  custoUnitarioAplicado Decimal  @map("custo_unitario_aplicado")
+
+  // Snapshots (imutabilidade garantida mesmo se a grade for excluída)
+  nomeProduto    String @map("nome_produto")
+  tamanhoProduto String @map("tamanho_produto")
+  corProduto     String @map("cor_produto")
+
+  // Relacionamentos
+  venda        Venda         @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  gradeProduto GradeProduto? @relation(fields: [gradeProdutoId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("itens_venda")
+}
+
+model DespesaAvulsa {
+  id          String   @id @default(uuid())
+  lojaId      String   @map("loja_id")
+  usuarioId   String?  @map("usuario_id")
+  descricao   String
+  valor       Decimal
+  dataDespesa DateTime @default(now()) @map("data_despesa")
+
+  // Relacionamentos
+  loja    Loja     @relation(fields: [lojaId], references: [id], onDelete: Cascade)
+  usuario Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("despesas_avulsas")
+}
+
+// ==========================================
+// NEXTAUTH (AUTENTICAÇÃO)
+// ==========================================
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("contas")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user Usuario @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessoes")
+}
