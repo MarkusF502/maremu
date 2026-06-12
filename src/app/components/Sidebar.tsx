@@ -36,13 +36,13 @@ export function Sidebar() {
           <BarChart3 size={20} />
           Relatório
         </Link>
-        <Link href="/entradas" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 transition-colors">
+        <Link href="/produtos/novo" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 transition-colors">
           <TrendingUp size={20} />
-          Entradas
+          Cadastrar Produto
         </Link>
-        <Link href="/saidas" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 transition-colors">
+        <Link href="/pdv" className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 transition-colors">
           <TrendingDown size={20} />
-          Saídas
+          Ponto de Venda
         </Link>
       </nav>
       <div className="p-4 border-t border-gray-200">

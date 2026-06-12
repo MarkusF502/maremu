@@ -1,12 +1,38 @@
 "use client";
 
 import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError(result.error);
+      setIsLoading(false);
+    } else {
+      router.push("/inicio");
+    }
+  };
 
   return (
     <div className="w-full max-w-md p-8 rounded-3xl bg-white border border-slate-200 shadow-xl space-y-8">
@@ -29,8 +55,15 @@ export default function LoginPage() {
       </div>
 
       {/* Formulário */}
-      <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+      <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-4">
+          {/* Mensagem de Erro */}
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl font-medium">
+              {error}
+            </div>
+          )}
+
           {/* Campo E-mail */}
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-sm font-semibold text-[#334155]">
@@ -43,8 +76,11 @@ export default function LoginPage() {
               <input
                 id="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
                 placeholder="seu@email.com"
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#F1F5F9] border border-transparent text-[#334155] placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#F1F5F9] border border-transparent text-[#334155] placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all disabled:opacity-50"
                 required
               />
             </div>
@@ -67,14 +103,18 @@ export default function LoginPage() {
               <input
                 id="password"
               type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 placeholder="••••••••"
-              className="w-full pl-10 pr-12 py-3 rounded-xl bg-[#F1F5F9] border border-transparent text-[#334155] placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all"
+                className="w-full pl-10 pr-12 py-3 rounded-xl bg-[#F1F5F9] border border-transparent text-[#334155] placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] focus:ring-1 focus:ring-[#2563EB] transition-all disabled:opacity-50"
                 required
               />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-[#334155] transition-colors"
+                disabled={isLoading}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-[#334155] transition-colors disabled:opacity-50"
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
             >
               {showPassword ? (
@@ -90,9 +130,10 @@ export default function LoginPage() {
         {/* Botão Submit (Primary Blue do Brand Kit) */}
         <button
           type="submit"
-          className="w-full py-3.5 px-4 rounded-xl bg-[#2563EB] hover:bg-[#1E3A8A] text-white font-bold shadow-md shadow-[#2563EB]/20 transition-all active:scale-[0.98]"
+          disabled={isLoading}
+          className="w-full py-3.5 px-4 rounded-xl bg-[#2563EB] hover:bg-[#1E3A8A] text-white font-bold shadow-md shadow-[#2563EB]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Entrar no Sistema
+          {isLoading ? "Autenticando..." : "Entrar no Sistema"}
         </button>
       </form>
 
