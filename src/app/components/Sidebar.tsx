@@ -24,7 +24,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 px-4 space-y-2 mt-4">
-        <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-200 text-[#1a3673] font-medium transition-colors">
+        <Link href="/inicio" className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-200 text-[#1a3673] font-medium transition-colors">
           <LayoutDashboard size={20} />
           Dashboard
         </Link>

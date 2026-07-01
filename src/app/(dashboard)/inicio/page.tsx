@@ -1,6 +1,31 @@
+"use client"; // Obrigatório adicionar isso no topo para usar hooks!
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Flame, AlertCircle, DollarSign, Lightbulb } from "lucide-react";
+import { useAuth } from "../../../hooks/useAuth"; // Ajuste o caminho se necessário
 
 export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  // A REGRA DE PROTEÇÃO: Se terminou de carregar e NÃO tem usuário, chuta pro login
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
+
+  // Enquanto a API checa se o usuário existe, mostramos uma tela limpa
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-slate-500 font-medium">Carregando painel...</p>
+      </div>
+    );
+  }
+
+  // Se chegou aqui, o usuário está logado! Mostramos o seu Dashboard:
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-8">
       {/* Sessão Superior: Banner "Resumo Rápido" */}

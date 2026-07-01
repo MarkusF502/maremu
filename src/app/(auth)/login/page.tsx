@@ -1,36 +1,55 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import { apiFetch } from "@/src/lib/api";
+import { useAuth } from "@/src/hooks/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, loading } = useAuth(); 
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Redireciona automaticamente para o dashboard se o usuário já estiver autenticado
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/inicio');
+    }
+  }, [user, loading, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError('');
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sanctum/csrf-cookie`, {
+        credentials: 'include',
+      });
+      const res = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (result?.error) {
-      setError(result.error);
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.message ?? 'Erro ao autenticar. Verifique suas credenciais.');
+        setIsLoading(false);
+        return;
+      }
+
+      router.push('/inicio');
+    } catch (err) {
+      setError('Erro de conexão com o servidor.');
       setIsLoading(false);
-    } else {
-      router.push("/inicio");
     }
   };
 
