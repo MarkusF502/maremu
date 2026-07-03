@@ -160,8 +160,8 @@ export default function LoginPage() {
       <div className="pt-6 border-t border-slate-100 text-center">
         <p className="text-sm text-slate-500">
           Ainda não tem uma conta?{" "}
-          <Link href="#" className="text-[#2563EB] hover:text-[#1E3A8A] font-semibold transition-colors">
-            Teste grátis
+          <Link href="/cadastro" className="text-[#2563EB] hover:text-[#1E3A8A] font-semibold transition-colors">
+            Crie sua conta
           </Link>
         </p>
       </div>
