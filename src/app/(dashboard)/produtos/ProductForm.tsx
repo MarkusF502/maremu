@@ -13,6 +13,7 @@ type Produto = {
   categoria_id: string;
   genero?: string | null;
   custo_aquisicao: string;
+  frete_entrada_unitario: string;
   preco_venda_atual?: string | null;
   variantes: Variante[];
 };
@@ -24,6 +25,8 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [categoriaId, setCategoriaId] = useState("");
   const [genero, setGenero] = useState("Unissex");
   const [custo, setCusto] = useState("");
+  const [freteUnitario, setFreteUnitario] = useState("0.00");
+  const [jaVendoNaLoja, setJaVendoNaLoja] = useState(false);
   const [preco, setPreco] = useState("");
   const [variantes, setVariantes] = useState<Variante[]>([]);
   const [novaCategoria, setNovaCategoria] = useState("");
@@ -59,7 +62,12 @@ export default function ProductForm({ productId }: { productId?: string }) {
           setCategoriaId(produto.categoria_id);
           setGenero(produto.genero || "Unissex");
           setCusto(produto.custo_aquisicao);
+          setFreteUnitario(produto.frete_entrada_unitario);
           setPreco(produto.preco_venda_atual || "");
+          setJaVendoNaLoja(
+            produto.preco_venda_atual !== null &&
+              produto.preco_venda_atual !== undefined,
+          );
           setVariantes(produto.variantes);
         }
       } catch (err) {
@@ -118,7 +126,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
             categoria_id: categoriaId,
             genero,
             custo_aquisicao: Number(custo),
-            preco_venda_atual: preco ? Number(preco) : null,
+            frete_entrada_unitario: Number(freteUnitario),
+            ...(jaVendoNaLoja && preco
+              ? { preco_venda_atual: Number(preco) }
+              : {}),
             variantes,
           }),
         },
@@ -255,16 +266,39 @@ export default function ProductForm({ productId }: { productId?: string }) {
             />
           </label>
           <label className="text-sm">
-            Venda Sugerida
+            Custo do frete unitário
             <input
+              required
               min="0"
               type="number"
               step="0.01"
-              value={preco}
-              onChange={(e) => setPreco(e.target.value)}
+              value={freteUnitario}
+              onChange={(e) => setFreteUnitario(e.target.value)}
               className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
             />
           </label>
+          <label className="flex items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={jaVendoNaLoja}
+              onChange={(e) => setJaVendoNaLoja(e.target.checked)}
+              className="size-4 rounded border-white/30 bg-[#0F172A]"
+            />
+            Já vendo este produto em minha loja
+          </label>
+          {jaVendoNaLoja && (
+            <label className="text-sm">
+              Preço atual
+              <input
+                min="0"
+                type="number"
+                step="0.01"
+                value={preco}
+                onChange={(e) => setPreco(e.target.value)}
+                className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
+              />
+            </label>
+          )}
           <button
             disabled={saving}
             className="mt-auto bg-[#0080ff] disabled:opacity-60 rounded-xl py-4 font-bold"
