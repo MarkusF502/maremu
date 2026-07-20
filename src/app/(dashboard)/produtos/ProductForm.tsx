@@ -14,6 +14,7 @@ type Produto = {
   genero?: string | null;
   custo_aquisicao: string;
   frete_entrada_unitario: string;
+  preco_piso: string;
   preco_venda_atual?: string | null;
   variantes: Variante[];
 };
@@ -37,9 +38,27 @@ export default function ProductForm({ productId }: { productId?: string }) {
   });
   const [categoryModal, setCategoryModal] = useState(false);
   const [variantModal, setVariantModal] = useState(false);
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(productId));
   const [saving, setSaving] = useState(false);
+  const [savingPrice, setSavingPrice] = useState(false);
   const [error, setError] = useState("");
+  const [priceModalError, setPriceModalError] = useState("");
+
+  function buildProductPayload(precoVendaAtual?: string) {
+    return {
+      nome,
+      categoria_id: categoriaId,
+      genero,
+      custo_aquisicao: Number(custo),
+      frete_entrada_unitario: Number(freteUnitario),
+      ...(precoVendaAtual !== undefined && precoVendaAtual !== ""
+        ? { preco_venda_atual: Number(precoVendaAtual) }
+        : {}),
+      variantes,
+    };
+  }
 
   useEffect(() => {
     async function load() {
@@ -98,6 +117,40 @@ export default function ProductForm({ productId }: { productId?: string }) {
     setCategoryModal(false);
   }
 
+  async function persistEditedPrice() {
+    if (!createdProductId) return;
+
+    if (!preco.trim()) {
+      setPriceModalError("Informe um preço de venda.");
+      return;
+    }
+
+    setPriceModalError("");
+    setSavingPrice(true);
+
+    try {
+      const response = await apiFetch(`/api/produtos/${createdProductId}`, {
+        method: "PUT",
+        body: JSON.stringify(buildProductPayload(preco)),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message || "Não foi possível salvar o preço.");
+      }
+
+      setPriceModalOpen(false);
+      router.push("/produtos");
+      router.refresh();
+    } catch (err) {
+      setPriceModalError(
+        err instanceof Error ? err.message : "Não foi possível salvar o preço.",
+      );
+    } finally {
+      setSavingPrice(false);
+    }
+  }
+
   function addVariant() {
     if (!novaVariante.tamanho.trim()) {
       setError("Informe o tamanho da variação.");
@@ -121,23 +174,27 @@ export default function ProductForm({ productId }: { productId?: string }) {
         productId ? `/api/produtos/${productId}` : "/api/produtos",
         {
           method: productId ? "PUT" : "POST",
-          body: JSON.stringify({
-            nome,
-            categoria_id: categoriaId,
-            genero,
-            custo_aquisicao: Number(custo),
-            frete_entrada_unitario: Number(freteUnitario),
-            ...(jaVendoNaLoja && preco
-              ? { preco_venda_atual: Number(preco) }
-              : {}),
-            variantes,
-          }),
+          body: JSON.stringify(
+            buildProductPayload(jaVendoNaLoja && preco ? preco : undefined),
+          ),
         },
       );
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(body?.message || "Não foi possível salvar o produto.");
       }
+
+      if (!productId) {
+        const createdProduct: Produto = await response.json();
+        setCreatedProductId(createdProduct.id);
+        setPreco(
+          createdProduct.preco_piso || createdProduct.preco_venda_atual || "",
+        );
+        setPriceModalError("");
+        setPriceModalOpen(true);
+        return;
+      }
+
       router.push("/produtos");
       router.refresh();
     } catch (err) {
@@ -368,6 +425,39 @@ export default function ProductForm({ productId }: { productId?: string }) {
             className="mt-4 w-full bg-[#2563EB] rounded-xl py-3 font-bold"
           >
             Adicionar
+          </button>
+        </Modal>
+      )}
+      {priceModalOpen && (
+        <Modal title="Ajustar preço de venda" close={() => setPriceModalOpen(false)}>
+          <p className="mb-4 text-sm text-white/70">
+            O preço piso foi calculado pelo sistema. Você pode ajustar esse valor antes de continuar.
+          </p>
+          {priceModalError && (
+            <p className="mb-4 rounded-xl bg-red-500/20 p-3 text-red-100">
+              {priceModalError}
+            </p>
+          )}
+          <label className="block text-sm">
+            Preço de venda
+            <input
+              autoFocus
+              required
+              min="0"
+              type="number"
+              step="0.01"
+              value={preco}
+              onChange={(e) => setPreco(e.target.value)}
+              className="mt-2 w-full rounded-xl bg-[#0F172A] p-4"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={persistEditedPrice}
+            disabled={savingPrice}
+            className="mt-4 w-full rounded-xl bg-[#2563EB] py-3 font-bold disabled:opacity-60"
+          >
+            {savingPrice ? "Salvando preço…" : "Salvar preço e continuar"}
           </button>
         </Modal>
       )}
