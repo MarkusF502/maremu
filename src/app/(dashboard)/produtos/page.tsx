@@ -2,13 +2,23 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 
 type Produto = {
   id: string;
   nome: string;
   categoria?: { nome: string };
+  genero?: "masculino" | "feminino" | "unisex" | null;
   custo_aquisicao: string;
   preco_venda_atual?: string | null;
   variantes: { quantidade_estoque: number; estoque_minimo_alerta: number }[];
@@ -18,6 +28,7 @@ type Filtros = {
   nome: string;
   categoriaId: string;
   status: string;
+  genero: string;
   precoMin: string;
   precoMax: string;
 };
@@ -28,6 +39,7 @@ const filtrosIniciais: Filtros = {
   nome: "",
   categoriaId: "",
   status: "",
+  genero: "",
   precoMin: "",
   precoMax: "",
 };
@@ -37,10 +49,16 @@ const money = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+function contarFiltrosAtivos(filtros: Filtros) {
+  return Object.values(filtros).filter((value) => value !== "").length;
+}
+
 export default function ProdutosPage() {
   const [products, setProducts] = useState<Produto[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [filters, setFilters] = useState<Filtros>(filtrosIniciais);
+  const [draftFilters, setDraftFilters] = useState<Filtros>(filtrosIniciais);
+  const [isFilterModalOpen, setFilterModalOpen] = useState(false);
   const [sort, setSort] = useState<Sort>({ column: "nome", direction: "asc" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -54,6 +72,7 @@ export default function ProdutosPage() {
       if (filtersToApply.categoriaId)
         params.set("categoria_id", filtersToApply.categoriaId);
       if (filtersToApply.status) params.set("status", filtersToApply.status);
+      if (filtersToApply.genero) params.set("genero", filtersToApply.genero);
       if (filtersToApply.precoMin !== "")
         params.set("preco_min", filtersToApply.precoMin);
       if (filtersToApply.precoMax !== "")
@@ -106,17 +125,36 @@ export default function ProdutosPage() {
     void loadInitialData();
   }, []);
 
-  function updateFilter(field: keyof Filtros, value: string) {
-    setFilters((current) => ({ ...current, [field]: value }));
+  // Fecha o modal com a tecla Esc
+  useEffect(() => {
+    if (!isFilterModalOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setFilterModalOpen(false);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFilterModalOpen]);
+
+  function updateDraftFilter(field: keyof Filtros, value: string) {
+    setDraftFilters((current) => ({ ...current, [field]: value }));
   }
 
-  function submitFilters(event: FormEvent<HTMLFormElement>) {
+  function openFilterModal() {
+    setDraftFilters(filters);
+    setFilterModalOpen(true);
+  }
+
+  function applyDraftFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void load();
+    setFilters(draftFilters);
+    setFilterModalOpen(false);
+    void load(draftFilters);
   }
 
   function clearFilters() {
     setFilters(filtrosIniciais);
+    setDraftFilters(filtrosIniciais);
+    setFilterModalOpen(false);
     void load(filtrosIniciais);
   }
 
@@ -196,6 +234,8 @@ export default function ProdutosPage() {
     });
   })();
 
+  const activeFilterCount = contarFiltrosAtivos(filters);
+
   return (
     <div className="min-h-screen p-8 bg-[#bfdbfe]">
       <div className="bg-[#1E3A8A] rounded-[32px] p-8 max-w-[1200px] mx-auto">
@@ -204,52 +244,31 @@ export default function ProdutosPage() {
             <h1 className="text-3xl font-bold text-white">Inventário de Peças</h1>
             <p className="mt-1 text-white/70">Gerencie o seu catálogo e estoque.</p>
           </div>
-          <Link href="/produtos/novo" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#0080ff] px-6 py-3 font-bold text-white hover:bg-blue-500">
-            <Plus size={20} />
-            Novo Produto
-          </Link>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={openFilterModal}
+              className="relative flex cursor-pointer items-center gap-2 rounded-xl border border-white/20 bg-[#172554] px-5 py-3 font-bold text-white hover:bg-[#1e2f6b]"
+            >
+              <SlidersHorizontal size={20} />
+              Filtros
+              {activeFilterCount > 0 && (
+                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0080ff] px-1.5 text-xs font-bold text-white">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <Link href="/produtos/novo" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#0080ff] px-6 py-3 font-bold text-white hover:bg-blue-500">
+              <Plus size={20} />
+              Novo Produto
+            </Link>
+          </div>
         </div>
         {error && (
           <div className="mb-4 rounded-xl bg-red-500/20 p-4 text-red-100">
             {error} <button onClick={() => void load()} className="cursor-pointer underline">Tentar novamente</button>
           </div>
         )}
-        <form onSubmit={submitFilters} className="mb-6 grid gap-4 rounded-3xl bg-[#172554] p-6 text-white md:grid-cols-2 xl:grid-cols-5">
-          <label className="text-sm">
-            Nome do produto
-            <input value={filters.nome} onChange={(event) => updateFilter("nome", event.target.value)} placeholder="Buscar por nome" className="mt-2 w-full rounded-xl bg-[#0F172A] p-3 placeholder:text-white/40" />
-          </label>
-          <label className="text-sm">
-            Categoria
-            <select value={filters.categoriaId} onChange={(event) => updateFilter("categoriaId", event.target.value)} className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3">
-              <option value="">Todas</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.nome}</option>)}
-            </select>
-          </label>
-          <label className="text-sm">
-            Status
-            <select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)} className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3">
-              <option value="">Todos</option>
-              <option value="em_estoque">Em estoque</option>
-              <option value="estoque_baixo">Estoque baixo</option>
-              <option value="critico">Crítico</option>
-            </select>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-sm">
-              Preço mínimo
-              <input type="number" min="0" step="0.01" value={filters.precoMin} onChange={(event) => updateFilter("precoMin", event.target.value)} className="mt-2 w-full rounded-xl bg-[#0F172A] p-3" />
-            </label>
-            <label className="text-sm">
-              Preço máximo
-              <input type="number" min="0" step="0.01" value={filters.precoMax} onChange={(event) => updateFilter("precoMax", event.target.value)} className="mt-2 w-full rounded-xl bg-[#0F172A] p-3" />
-            </label>
-          </div>
-          <div className="flex items-end gap-3">
-            <button type="submit" disabled={loading} className="cursor-pointer rounded-xl bg-[#0080ff] px-5 py-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">Filtrar</button>
-            <button type="button" onClick={clearFilters} disabled={loading} className="cursor-pointer rounded-xl border border-white/30 px-5 py-3 font-bold hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60">Limpar filtros</button>
-          </div>
-        </form>
         <div className="bg-[#0F172A] rounded-3xl p-6 overflow-x-auto">
           <table className="w-full text-left whitespace-nowrap">
             <thead>
@@ -279,6 +298,128 @@ export default function ProdutosPage() {
           </table>
         </div>
       </div>
+
+      {isFilterModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="filtros-titulo"
+          onClick={() => setFilterModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl bg-[#172554] p-6 text-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <h2 id="filtros-titulo" className="text-xl font-bold">
+                Filtrar produtos
+              </h2>
+              <button
+                type="button"
+                onClick={() => setFilterModalOpen(false)}
+                aria-label="Fechar filtros"
+                className="cursor-pointer rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={applyDraftFilters} className="grid gap-4 md:grid-cols-2">
+              <label className="text-sm md:col-span-2">
+                Nome do produto
+                <input
+                  value={draftFilters.nome}
+                  onChange={(event) => updateDraftFilter("nome", event.target.value)}
+                  placeholder="Buscar por nome"
+                  className="mt-2 w-full rounded-xl bg-[#0F172A] p-3 placeholder:text-white/40"
+                />
+              </label>
+              <label className="text-sm">
+                Categoria
+                <select
+                  value={draftFilters.categoriaId}
+                  onChange={(event) => updateDraftFilter("categoriaId", event.target.value)}
+                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
+                >
+                  <option value="">Todas</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                Gênero
+                <select
+                  value={draftFilters.genero}
+                  onChange={(event) => updateDraftFilter("genero", event.target.value)}
+                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
+                >
+                  <option value="">Todos</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="unisex">Unissex</option>
+                </select>
+              </label>
+              <label className="text-sm">
+                Status
+                <select
+                  value={draftFilters.status}
+                  onChange={(event) => updateDraftFilter("status", event.target.value)}
+                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
+                >
+                  <option value="">Todos</option>
+                  <option value="em_estoque">Em estoque</option>
+                  <option value="estoque_baixo">Estoque baixo</option>
+                  <option value="critico">Crítico</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-sm">
+                  Preço mínimo
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draftFilters.precoMin}
+                    onChange={(event) => updateDraftFilter("precoMin", event.target.value)}
+                    className="mt-2 w-full rounded-xl bg-[#0F172A] p-3"
+                  />
+                </label>
+                <label className="text-sm">
+                  Preço máximo
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={draftFilters.precoMax}
+                    onChange={(event) => updateDraftFilter("precoMax", event.target.value)}
+                    className="mt-2 w-full rounded-xl bg-[#0F172A] p-3"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-end gap-3 md:col-span-2">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  disabled={loading}
+                  className="cursor-pointer rounded-xl border border-white/30 px-5 py-3 font-bold hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Limpar filtros
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="cursor-pointer rounded-xl bg-[#0080ff] px-5 py-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Aplicar filtros
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
