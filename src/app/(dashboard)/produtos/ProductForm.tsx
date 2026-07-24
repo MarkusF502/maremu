@@ -19,6 +19,21 @@ type Produto = {
   variantes: Variante[];
 };
 
+// ── NOVO: tipos do retorno de /precificacao/sugerir ────────────────────
+type CenarioIA = {
+  id: "cenario_1" | "cenario_2" | "cenario_3";
+  tipo: "liquidacao" | "ideal" | "alta_demanda";
+  preco_sugerido: number;
+  explicacao: string;
+};
+
+const TIPO_LABEL: Record<CenarioIA["tipo"], string> = {
+  liquidacao: "Liquidação",
+  ideal: "Venda ideal",
+  alta_demanda: "Alta demanda",
+};
+// ─────────────────────────────────────────────────────────────────────
+
 export default function ProductForm({ productId }: { productId?: string }) {
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -45,6 +60,14 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [savingPrice, setSavingPrice] = useState(false);
   const [error, setError] = useState("");
   const [priceModalError, setPriceModalError] = useState("");
+
+  // ── NOVO: estado das sugestões da IA ──────────────────────────────
+  const [cenarios, setCenarios] = useState<CenarioIA[]>([]);
+  const [logId, setLogId] = useState<string | null>(null);
+  const [cenarioEscolhido, setCenarioEscolhido] = useState<string>("manual");
+  const [loadingCenarios, setLoadingCenarios] = useState(false);
+  const [cenariosError, setCenariosError] = useState("");
+  // ────────────────────────────────────────────────────────────────
 
   function buildProductPayload(precoVendaAtual?: string) {
     return {
@@ -117,6 +140,44 @@ export default function ProductForm({ productId }: { productId?: string }) {
     setCategoryModal(false);
   }
 
+  // ── NOVO: busca as sugestões assim que o produto é criado ────────
+  async function fetchCenarios(productId: string) {
+    setLoadingCenarios(true);
+    setCenariosError("");
+    try {
+      const response = await apiFetch(`/api/precificacao/sugerir/${productId}`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(
+          "Não foi possível gerar sugestões de preço agora. Você ainda pode definir manualmente.",
+        );
+      }
+      const data: { log_id: string; cenarios: CenarioIA[] } = await response.json();
+      setLogId(data.log_id);
+      setCenarios(data.cenarios);
+    } catch (err) {
+      setCenariosError(
+        err instanceof Error ? err.message : "Erro ao buscar sugestões da IA.",
+      );
+    } finally {
+      setLoadingCenarios(false);
+    }
+  }
+
+  function selecionarCenario(cenario: CenarioIA) {
+    setCenarioEscolhido(cenario.id);
+    setPreco(String(cenario.preco_sugerido));
+    setPriceModalError("");
+  }
+
+  function editarManualmente(valor: string) {
+    setCenarioEscolhido("manual");
+    setPreco(valor);
+  }
+  // ──────────────────────────────────────────────────────────────
+
+  // ── ALTERADO: agora confirma via /precificacao/confirmar em vez de PUT direto ──
   async function persistEditedPrice() {
     if (!createdProductId) return;
 
@@ -125,14 +186,32 @@ export default function ProductForm({ productId }: { productId?: string }) {
       return;
     }
 
+    // Se o usuário escolheu um cenário da IA, precisamos do log_id para confirmar.
+    // Se está editando manualmente, log_id pode existir (para registrar que a IA
+    // sugeriu algo mas o lojista optou por outro valor) ou não (IA falhou).
+    if (cenarioEscolhido !== "manual" && !logId) {
+      setPriceModalError("Não foi possível validar a sugestão da IA. Recarregue e tente novamente.");
+      return;
+    }
+
     setPriceModalError("");
     setSavingPrice(true);
 
     try {
-      const response = await apiFetch(`/api/produtos/${createdProductId}`, {
-        method: "PUT",
-        body: JSON.stringify(buildProductPayload(preco)),
-      });
+      const response = logId
+        ? await apiFetch("/api/precificacao/confirmar", {
+            method: "POST",
+            body: JSON.stringify({
+              log_id: logId,
+              cenario_escolhido: cenarioEscolhido,
+              preco_final: Number(preco),
+            }),
+          })
+        : // fallback: IA não gerou log (ex: falha na chamada) — salva preço direto no produto
+          await apiFetch(`/api/produtos/${createdProductId}`, {
+            method: "PUT",
+            body: JSON.stringify(buildProductPayload(preco)),
+          });
 
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -192,6 +271,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
         );
         setPriceModalError("");
         setPriceModalOpen(true);
+        fetchCenarios(createdProduct.id); // ← NOVO: dispara a busca das sugestões
         return;
       }
 
@@ -431,23 +511,60 @@ export default function ProductForm({ productId }: { productId?: string }) {
       {priceModalOpen && (
         <Modal title="Ajustar preço de venda" close={() => setPriceModalOpen(false)}>
           <p className="mb-4 text-sm text-white/70">
-            O preço piso foi calculado pelo sistema. Você pode ajustar esse valor antes de continuar.
+            O preço piso foi calculado pelo sistema. Veja as sugestões da IA
+            abaixo ou ajuste manualmente.
           </p>
+
+          {/* ── NOVO: bloco de cenários da IA ──────────────────────── */}
+          {loadingCenarios && (
+            <p className="mb-4 text-sm text-white/60">Gerando sugestões de preço…</p>
+          )}
+          {cenariosError && (
+            <p className="mb-4 rounded-xl bg-amber-500/20 p-3 text-amber-100 text-sm">
+              {cenariosError}
+            </p>
+          )}
+          {cenarios.length > 0 && (
+            <div className="mb-5 space-y-2">
+              {cenarios.map((cenario) => (
+                <button
+                  key={cenario.id}
+                  type="button"
+                  onClick={() => selecionarCenario(cenario)}
+                  className={`w-full rounded-xl p-4 text-left transition ${
+                    cenarioEscolhido === cenario.id
+                      ? "bg-[#2563EB] ring-2 ring-blue-300"
+                      : "bg-[#0F172A] hover:bg-[#0F172A]/70"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold">{TIPO_LABEL[cenario.tipo]}</span>
+                    <span className="font-bold">
+                      R$ {cenario.preco_sugerido.toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-white/70">{cenario.explicacao}</p>
+                </button>
+              ))}
+            </div>
+          )}
+          {/* ──────────────────────────────────────────────────────── */}
+
           {priceModalError && (
             <p className="mb-4 rounded-xl bg-red-500/20 p-3 text-red-100">
               {priceModalError}
             </p>
           )}
           <label className="block text-sm">
-            Preço de venda
+            {cenarios.length > 0 ? "Ou defina manualmente" : "Preço de venda"}
             <input
-              autoFocus
+              autoFocus={cenarios.length === 0}
               required
               min="0"
               type="number"
               step="0.01"
               value={preco}
-              onChange={(e) => setPreco(e.target.value)}
+              onChange={(e) => editarManualmente(e.target.value)}
               className="mt-2 w-full rounded-xl bg-[#0F172A] p-4"
             />
           </label>
