@@ -356,14 +356,6 @@ export default function RelatorioPage() {
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Visão Geral Financeira</h1>
             <p className="mt-2 text-sm font-medium text-slate-600">Dados atualizados diretamente do banco da loja.</p>
           </div>
-          <button
-            type="button"
-            onClick={() => void carregarRelatorio()}
-            disabled={loadingRelatorio}
-            className="flex items-center gap-2 rounded-xl bg-white/75 px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-wait disabled:opacity-60"
-          >
-            <RefreshCw size={17} className={loadingRelatorio ? "animate-spin" : ""} /> Atualizar
-          </button>
         </div>
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
