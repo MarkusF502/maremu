@@ -20,6 +20,7 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import CurrencyInput from "@/src/components/CurrencyInput";
 
 // ── Tipos ────────────────────────────────────────────────────────────────
 
@@ -526,11 +527,9 @@ function TelaRevisaoIa({
               <ReviewField key={key} label={label} icon={icon}>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-slate-400 text-sm">{prefix}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={value}
-                    onChange={(e) => set(Number(e.target.value))}
+                  <CurrencyInput
+                    value={String(value)}
+                    onChange={(newValue) => set(Number(newValue || 0))}
                     className={`${inputClass} pl-10`}
                   />
                 </div>
@@ -686,11 +685,9 @@ function TelaRevisaoDeterministica({
             <ReviewField label="Custo fixo mensal" icon={DollarSign} tooltip={data.tooltips.custo_fixo_mensal}>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-slate-400 text-sm">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={data.loja.custo_fixo_mensal}
-                  onChange={(e) => setLoja({ custo_fixo_mensal: Number(e.target.value), custo_fixo_origem: "editado_pelo_lojista" })}
+                <CurrencyInput
+                  value={String(data.loja.custo_fixo_mensal)}
+                  onChange={(value) => setLoja({ custo_fixo_mensal: Number(value || 0), custo_fixo_origem: "editado_pelo_lojista" })}
                   className={`${inputClass} pl-10`}
                 />
               </div>

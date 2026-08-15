@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import { HELP_ARTICLES } from "./help";
+import CurrencyInput from "@/src/components/CurrencyInput";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────
 
@@ -379,14 +380,11 @@ function SecaoFinanceiro({
             >
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-slate-400 text-sm">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={loja.custo_fixo_mensal}
-                  onChange={(e) =>
+                <CurrencyInput
+                  value={String(loja.custo_fixo_mensal)}
+                  onChange={(value) =>
                     onChange({
-                      custo_fixo_mensal: Number(e.target.value),
+                      custo_fixo_mensal: Number(value || 0),
                       custo_fixo_origem: "editado_pelo_lojista",
                     })
                   }
@@ -477,13 +475,10 @@ function SecaoFinanceiro({
             >
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-slate-400 text-sm">R$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={loja.faturamento_medio_mensal}
-                  onChange={(e) =>
-                    onChange({ faturamento_medio_mensal: Number(e.target.value) })
+                <CurrencyInput
+                  value={String(loja.faturamento_medio_mensal)}
+                  onChange={(value) =>
+                    onChange({ faturamento_medio_mensal: Number(value || 0) })
                   }
                   className={`${inputClass} pl-10`}
                 />

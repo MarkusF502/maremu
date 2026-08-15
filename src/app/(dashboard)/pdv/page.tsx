@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import CurrencyInput from "@/src/components/CurrencyInput";
 
 type VarianteCatalogo = {
   id: string;
@@ -657,15 +658,11 @@ export default function PDVPage() {
               Desconto total
               <div className="mt-1.5 flex items-center rounded-xl border border-white/5 bg-[#091122] px-3 focus-within:border-blue-400">
                 <span className="text-sm text-white/40">R$</span>
-                <input
-                  type="number"
-                  min="0"
+                <CurrencyInput
                   max={subtotal}
-                  step="0.01"
                   value={desconto}
-                  onChange={(event) => setDesconto(event.target.value)}
+                  onChange={setDesconto}
                   className="w-full bg-transparent px-2 py-2.5 text-sm text-white outline-none"
-                  placeholder="0,00"
                 />
               </div>
             </label>

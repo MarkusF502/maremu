@@ -4,6 +4,8 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import CurrencyInput from "@/src/components/CurrencyInput";
+import Loader3D from "@/src/components/Loader3D";
 
 type Category = { id: string; nome: string };
 type Variante = { tamanho: string; cor: string; quantidade_estoque: number };
@@ -392,27 +394,27 @@ export default function ProductForm({ productId }: { productId?: string }) {
           <h2 className="text-xl font-bold">Preço</h2>
           <label className="text-sm">
             Custo de Fábrica
-            <input
-              required
-              min="0"
-              type="number"
-              step="0.01"
-              value={custo}
-              onChange={(e) => setCusto(e.target.value)}
-              className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
-            />
+            <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
+              <span className="text-white/50">R$</span>
+              <CurrencyInput
+                required
+                value={custo}
+                onChange={setCusto}
+                className="w-full bg-transparent outline-none"
+              />
+            </div>
           </label>
           <label className="text-sm">
             Custo do frete unitário
-            <input
-              required
-              min="0"
-              type="number"
-              step="0.01"
-              value={freteUnitario}
-              onChange={(e) => setFreteUnitario(e.target.value)}
-              className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
-            />
+            <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
+              <span className="text-white/50">R$</span>
+              <CurrencyInput
+                required
+                value={freteUnitario}
+                onChange={setFreteUnitario}
+                className="w-full bg-transparent outline-none"
+              />
+            </div>
           </label>
           <label className="flex items-center gap-3 text-sm">
             <input
@@ -426,14 +428,14 @@ export default function ProductForm({ productId }: { productId?: string }) {
           {jaVendoNaLoja && (
             <label className="text-sm">
               Preço atual
-              <input
-                min="0"
-                type="number"
-                step="0.01"
-                value={preco}
-                onChange={(e) => setPreco(e.target.value)}
-                className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
-              />
+              <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
+                <span className="text-white/50">R$</span>
+                <CurrencyInput
+                  value={preco}
+                  onChange={setPreco}
+                  className="w-full bg-transparent outline-none"
+                />
+              </div>
             </label>
           )}
           <button
@@ -510,72 +512,73 @@ export default function ProductForm({ productId }: { productId?: string }) {
       )}
       {priceModalOpen && (
         <Modal title="Ajustar preço de venda" close={() => setPriceModalOpen(false)}>
-          <p className="mb-4 text-sm text-white/70">
-            O preço piso foi calculado pelo sistema. Veja as sugestões da IA
-            abaixo ou ajuste manualmente.
-          </p>
+          {loadingCenarios ? (
+            <Loader3D message="Aguarde enquanto a IA calcula o preço ideal do seu produto…" />
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-white/70">
+                O preço piso foi calculado pelo sistema. Veja as sugestões da IA
+                abaixo ou ajuste manualmente.
+              </p>
 
-          {/* ── NOVO: bloco de cenários da IA ──────────────────────── */}
-          {loadingCenarios && (
-            <p className="mb-4 text-sm text-white/60">Gerando sugestões de preço…</p>
-          )}
-          {cenariosError && (
-            <p className="mb-4 rounded-xl bg-amber-500/20 p-3 text-amber-100 text-sm">
-              {cenariosError}
-            </p>
-          )}
-          {cenarios.length > 0 && (
-            <div className="mb-5 space-y-2">
-              {cenarios.map((cenario) => (
-                <button
-                  key={cenario.id}
-                  type="button"
-                  onClick={() => selecionarCenario(cenario)}
-                  className={`w-full rounded-xl p-4 text-left transition ${
-                    cenarioEscolhido === cenario.id
-                      ? "bg-[#2563EB] ring-2 ring-blue-300"
-                      : "bg-[#0F172A] hover:bg-[#0F172A]/70"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold">{TIPO_LABEL[cenario.tipo]}</span>
-                    <span className="font-bold">
-                      R$ {cenario.preco_sugerido.toFixed(2)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-white/70">{cenario.explicacao}</p>
-                </button>
-              ))}
-            </div>
-          )}
-          {/* ──────────────────────────────────────────────────────── */}
+              {cenariosError && (
+                <p className="mb-4 rounded-xl bg-amber-500/20 p-3 text-amber-100 text-sm">
+                  {cenariosError}
+                </p>
+              )}
+              {cenarios.length > 0 && (
+                <div className="mb-5 space-y-2">
+                  {cenarios.map((cenario) => (
+                    <button
+                      key={cenario.id}
+                      type="button"
+                      onClick={() => selecionarCenario(cenario)}
+                      className={`w-full rounded-xl p-4 text-left transition ${
+                        cenarioEscolhido === cenario.id
+                          ? "bg-[#2563EB] ring-2 ring-blue-300"
+                          : "bg-[#0F172A] hover:bg-[#0F172A]/70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{TIPO_LABEL[cenario.tipo]}</span>
+                        <span className="font-bold">
+                          R$ {cenario.preco_sugerido.toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-white/70">{cenario.explicacao}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-          {priceModalError && (
-            <p className="mb-4 rounded-xl bg-red-500/20 p-3 text-red-100">
-              {priceModalError}
-            </p>
+              {priceModalError && (
+                <p className="mb-4 rounded-xl bg-red-500/20 p-3 text-red-100">
+                  {priceModalError}
+                </p>
+              )}
+              <label className="block text-sm">
+                {cenarios.length > 0 ? "Ou defina manualmente" : "Preço de venda"}
+                <div className="mt-2 flex items-center gap-1 w-full rounded-xl bg-[#0F172A] p-4">
+                  <span className="text-white/50">R$</span>
+                  <CurrencyInput
+                    autoFocus={cenarios.length === 0}
+                    required
+                    value={preco}
+                    onChange={editarManualmente}
+                    className="w-full bg-transparent outline-none"
+                  />
+                </div>
+              </label>
+              <button
+                type="button"
+                onClick={persistEditedPrice}
+                disabled={savingPrice}
+                className="mt-4 w-full rounded-xl bg-[#2563EB] py-3 font-bold disabled:opacity-60"
+              >
+                {savingPrice ? "Salvando preço…" : "Salvar preço e continuar"}
+              </button>
+            </>
           )}
-          <label className="block text-sm">
-            {cenarios.length > 0 ? "Ou defina manualmente" : "Preço de venda"}
-            <input
-              autoFocus={cenarios.length === 0}
-              required
-              min="0"
-              type="number"
-              step="0.01"
-              value={preco}
-              onChange={(e) => editarManualmente(e.target.value)}
-              className="mt-2 w-full rounded-xl bg-[#0F172A] p-4"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={persistEditedPrice}
-            disabled={savingPrice}
-            className="mt-4 w-full rounded-xl bg-[#2563EB] py-3 font-bold disabled:opacity-60"
-          >
-            {savingPrice ? "Salvando preço…" : "Salvar preço e continuar"}
-          </button>
         </Modal>
       )}
     </div>

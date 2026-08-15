@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import CurrencyInput from "@/src/components/CurrencyInput";
 
 type Produto = {
   id: string;
@@ -378,25 +379,25 @@ export default function ProdutosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-sm">
                   Preço mínimo
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={draftFilters.precoMin}
-                    onChange={(event) => updateDraftFilter("precoMin", event.target.value)}
-                    className="mt-2 w-full rounded-xl bg-[#0F172A] p-3"
-                  />
+                  <div className="mt-2 flex items-center gap-1 rounded-xl bg-[#0F172A] p-3">
+                    <span className="text-white/50">R$</span>
+                    <CurrencyInput
+                      value={draftFilters.precoMin}
+                      onChange={(value) => updateDraftFilter("precoMin", value)}
+                      className="w-full bg-transparent outline-none"
+                    />
+                  </div>
                 </label>
                 <label className="text-sm">
                   Preço máximo
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={draftFilters.precoMax}
-                    onChange={(event) => updateDraftFilter("precoMax", event.target.value)}
-                    className="mt-2 w-full rounded-xl bg-[#0F172A] p-3"
-                  />
+                  <div className="mt-2 flex items-center gap-1 rounded-xl bg-[#0F172A] p-3">
+                    <span className="text-white/50">R$</span>
+                    <CurrencyInput
+                      value={draftFilters.precoMax}
+                      onChange={(value) => updateDraftFilter("precoMax", value)}
+                      className="w-full bg-transparent outline-none"
+                    />
+                  </div>
                 </label>
               </div>
               <div className="flex items-center justify-end gap-3 md:col-span-2">
