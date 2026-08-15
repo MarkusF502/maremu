@@ -1,11 +1,6 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+import { getToken, clearToken } from './auth-token';
 
-// Função auxiliar para ler os cookies salvos no navegador
-function getCookie(name: string) {
-  if (typeof document === 'undefined') return null; 
-  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
-  return match ? decodeURIComponent(match[3]) : null;
-}
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   // 1. Inicializa a classe nativa de cabeçalhos herdando o que já veio nas options
@@ -19,18 +14,24 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     headers.set('Accept', 'application/json');
   }
 
-  // 3. Lê o cookie e injeta no cabeçalho usando o método .set()
-  const csrfToken = getCookie('XSRF-TOKEN');
-  if (csrfToken) {
-    headers.set('X-XSRF-TOKEN', csrfToken);
+  // 3. Anexa o Bearer token salvo no localStorage, quando existir
+  const token = getToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   // 4. Executa a requisição
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    credentials: 'include',
     headers, // Passa a nossa classe Headers formatada
   });
+
+  // 5. Sessão expirada ou token revogado: limpa o token salvo.
+  // Não força redirecionamento aqui para não acoplar o apiFetch ao roteador —
+  // isso fica a cargo de quem chamou.
+  if (res.status === 401) {
+    clearToken();
+  }
 
   return res;
 }

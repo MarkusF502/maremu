@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import { clearToken } from "@/src/lib/auth-token";
 
 type NavigationItem = {
   label: string;
@@ -39,6 +40,7 @@ export function Sidebar() {
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
     } finally {
+      clearToken();
       router.push("/login");
     }
   };

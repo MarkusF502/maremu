@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import { apiFetch } from "@/src/lib/api";
+import { setToken } from "@/src/lib/auth-token";
 import { useAuth } from "@/src/hooks/useAuth";
 
 export default function LoginPage() {
@@ -31,21 +32,20 @@ export default function LoginPage() {
     setError('');
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sanctum/csrf-cookie`, {
-        credentials: 'include',
-      });
       const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         setError(data.message ?? 'Erro ao autenticar. Verifique suas credenciais.');
         setIsLoading(false);
         return;
       }
 
+      setToken(data.token);
       router.push('/inicio');
     } catch (err) {
       setError('Erro de conexão com o servidor.');

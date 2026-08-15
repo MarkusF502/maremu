@@ -6,6 +6,7 @@ import Link from "next/link";
 import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import { apiFetch } from "@/src/lib/api";
+import { setToken } from "@/src/lib/auth-token";
 import { useAuth } from "@/src/hooks/useAuth";
 
 export default function RegisterPage() {
@@ -46,24 +47,20 @@ export default function RegisterPage() {
     }
 
     try {
-      // 1. Pega o CSRF Token para liberar o POST no Laravel Sanctum
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/sanctum/csrf-cookie`, {
-        credentials: 'include',
-      });
-
-      // 2. Dispara a criação da conta (Ajuste a rota se estiver diferente no seu backend)
+      // Dispara a criação da conta (Ajuste a rota se estiver diferente no seu backend)
       const res = await apiFetch('/api/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ 
-          name, 
-          email, 
-          password, 
-          password_confirmation: passwordConfirmation 
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          password_confirmation: passwordConfirmation
         }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        const data = await res.json();
         // O Laravel costuma retornar os erros de validação dentro de 'errors'
         if (data.errors) {
             const firstError = Object.values(data.errors)[0] as string[];
@@ -75,10 +72,11 @@ export default function RegisterPage() {
         return;
       }
 
-      // Sucesso! Como o usuário acabou de ser criado e não tem loja, 
-      // podemos mandá-lo direto para o fluxo de onboarding.
+      // Sucesso! Salva o token de acesso e, como o usuário acabou de ser
+      // criado e não tem loja, manda ele direto para o fluxo de onboarding.
+      setToken(data.token);
       router.push('/onboarding');
-      
+
     } catch (err) {
       setError('Erro de conexão com o servidor.');
       setIsLoading(false);
