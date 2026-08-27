@@ -5,3 +5,65 @@
     @apply antialiased;
   }
 }
+
+/* ——— Camada de movimento (mm-*) — Padrões de Movimento v1.0 ———
+   Só tempo, curva e transformação: nenhuma cor, medida de layout ou
+   espaçamento é definida aqui. Ver design/Padrões de Movimento.dc.html. */
+:root {
+  --mm-t-instant: 160ms; --mm-t-fast: 180ms;  --mm-t-veil: 200ms;
+  --mm-t-panel: 320ms;   --mm-t-screen: 400ms; --mm-t-block: 450ms;
+  --mm-t-chart: 700ms;   --mm-t-count: 950ms;  --mm-t-shimmer: 1150ms; --mm-t-pulse: 2400ms;
+  --mm-ease-out: cubic-bezier(.2,.7,.2,1);
+  --mm-ease-chart: cubic-bezier(.2,.8,.2,1);
+  --mm-ease-state: ease;
+  --mm-ease-loop: ease-in-out;
+  --mm-shift-screen: 14px; --mm-shift-block: 10px; --mm-shift-panel: 36px; --mm-shift-toast: 12px;
+  --mm-stagger: 70ms;
+  --mm-scale: 1;
+}
+
+@keyframes mm-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes mm-screen-in { from { opacity: 0; transform: translateY(var(--mm-shift-screen)) } to { opacity: 1; transform: none } }
+@keyframes mm-rise-in { from { opacity: 0; transform: translateY(var(--mm-shift-block)) } to { opacity: 1; transform: none } }
+@keyframes mm-pop-in { from { opacity: 0; transform: translateY(18px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes mm-pop-in-centered { from { opacity: 0; transform: translate(-50%,-50%) scale(.97) } to { opacity: 1; transform: translate(-50%,-50%) scale(1) } }
+@keyframes mm-slide-right { from { opacity: 0; transform: translateX(var(--mm-shift-panel)) } to { opacity: 1; transform: none } }
+@keyframes mm-toast-in { from { opacity: 0; transform: translate(-50%, var(--mm-shift-toast)) } to { opacity: 1; transform: translate(-50%, 0) } }
+@keyframes mm-grow-y { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@keyframes mm-grow-x { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+@keyframes mm-draw { from { stroke-dashoffset: var(--mm-dash, 900) } to { stroke-dashoffset: 0 } }
+@keyframes mm-shimmer { from { background-position: -420px 0 } to { background-position: 420px 0 } }
+@keyframes mm-pulse-dot { 0%, 100% { transform: scale(.7); opacity: .35 } 50% { transform: scale(1); opacity: 1 } }
+
+.mm-screen-in { animation: mm-screen-in calc(var(--mm-t-screen) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-rise-in { animation: mm-rise-in calc(var(--mm-t-block) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-pop-in { animation: mm-pop-in calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-slide-right { animation: mm-slide-right calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-fade { animation: mm-fade calc(var(--mm-t-veil) * var(--mm-scale)) both; }
+.mm-toast-in { animation: mm-toast-in calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-bar { transform-origin: bottom; animation: mm-grow-y calc(var(--mm-t-chart) * var(--mm-scale)) var(--mm-ease-chart) both; }
+.mm-row { transform-origin: left; animation: mm-grow-x calc(var(--mm-t-chart) * var(--mm-scale)) var(--mm-ease-chart) both; }
+.mm-line { stroke-dasharray: 900; animation: mm-draw calc(1100ms * var(--mm-scale)) ease-out both; }
+.mm-dot { animation: mm-pulse-dot calc(var(--mm-t-pulse) * var(--mm-scale)) var(--mm-ease-loop) infinite; }
+.mm-stagger > * { animation-delay: calc(var(--mm-i, 0) * var(--mm-stagger) * var(--mm-scale)); }
+
+.mm-skeleton {
+  background: linear-gradient(90deg, #e7e7ea 25%, #f5f5f8 50%, #e7e7ea 75%);
+  background-size: 420px 100%;
+  animation: mm-shimmer calc(var(--mm-t-shimmer) * var(--mm-scale)) linear infinite;
+}
+.mm-hover {
+  transition:
+    background var(--mm-t-fast) var(--mm-ease-state),
+    color var(--mm-t-fast) var(--mm-ease-state),
+    border-color var(--mm-t-fast) var(--mm-ease-state),
+    transform var(--mm-t-instant) var(--mm-ease-state),
+    box-shadow var(--mm-t-fast) var(--mm-ease-state);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-screen-in, .mm-rise-in, .mm-pop-in, .mm-slide-right,
+  .mm-toast-in, .mm-bar, .mm-row, .mm-line { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+  .mm-skeleton, .mm-dot { animation: none !important; }
+  .mm-hover { transition-duration: 1ms !important; }
+}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import CurrencyInput from "@/src/components/CurrencyInput";
-import Loader3D from "@/src/components/Loader3D";
+import PricingModal from "./PricingModal";
 
 type Category = { id: string; nome: string };
 type Variante = { tamanho: string; cor: string; quantidade_estoque: number };
@@ -29,11 +29,6 @@ type CenarioIA = {
   explicacao: string;
 };
 
-const TIPO_LABEL: Record<CenarioIA["tipo"], string> = {
-  liquidacao: "Liquidação",
-  ideal: "Venda ideal",
-  alta_demanda: "Alta demanda",
-};
 // ─────────────────────────────────────────────────────────────────────
 
 export default function ProductForm({ productId }: { productId?: string }) {
@@ -57,6 +52,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [variantModal, setVariantModal] = useState(false);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
+  const [precoPisoExibido, setPrecoPisoExibido] = useState("");
   const [loading, setLoading] = useState(Boolean(productId));
   const [saving, setSaving] = useState(false);
   const [savingPrice, setSavingPrice] = useState(false);
@@ -268,6 +264,12 @@ export default function ProductForm({ productId }: { productId?: string }) {
       if (!productId) {
         const createdProduct: Produto = await response.json();
         setCreatedProductId(createdProduct.id);
+        setPrecoPisoExibido(
+          Number(createdProduct.preco_piso || 0).toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+        );
         setPreco(
           createdProduct.preco_piso || createdProduct.preco_venda_atual || "",
         );
@@ -511,75 +513,24 @@ export default function ProductForm({ productId }: { productId?: string }) {
         </Modal>
       )}
       {priceModalOpen && (
-        <Modal title="Ajustar preço de venda" close={() => setPriceModalOpen(false)}>
-          {loadingCenarios ? (
-            <Loader3D message="Aguarde enquanto a IA calcula o preço ideal do seu produto…" />
-          ) : (
-            <>
-              <p className="mb-4 text-sm text-white/70">
-                O preço piso foi calculado pelo sistema. Veja as sugestões da IA
-                abaixo ou ajuste manualmente.
-              </p>
-
-              {cenariosError && (
-                <p className="mb-4 rounded-xl bg-amber-500/20 p-3 text-amber-100 text-sm">
-                  {cenariosError}
-                </p>
-              )}
-              {cenarios.length > 0 && (
-                <div className="mb-5 space-y-2">
-                  {cenarios.map((cenario) => (
-                    <button
-                      key={cenario.id}
-                      type="button"
-                      onClick={() => selecionarCenario(cenario)}
-                      className={`w-full rounded-xl p-4 text-left transition ${
-                        cenarioEscolhido === cenario.id
-                          ? "bg-[#2563EB] ring-2 ring-blue-300"
-                          : "bg-[#0F172A] hover:bg-[#0F172A]/70"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold">{TIPO_LABEL[cenario.tipo]}</span>
-                        <span className="font-bold">
-                          R$ {cenario.preco_sugerido.toFixed(2)}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-white/70">{cenario.explicacao}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {priceModalError && (
-                <p className="mb-4 rounded-xl bg-red-500/20 p-3 text-red-100">
-                  {priceModalError}
-                </p>
-              )}
-              <label className="block text-sm">
-                {cenarios.length > 0 ? "Ou defina manualmente" : "Preço de venda"}
-                <div className="mt-2 flex items-center gap-1 w-full rounded-xl bg-[#0F172A] p-4">
-                  <span className="text-white/50">R$</span>
-                  <CurrencyInput
-                    autoFocus={cenarios.length === 0}
-                    required
-                    value={preco}
-                    onChange={editarManualmente}
-                    className="w-full bg-transparent outline-none"
-                  />
-                </div>
-              </label>
-              <button
-                type="button"
-                onClick={persistEditedPrice}
-                disabled={savingPrice}
-                className="mt-4 w-full rounded-xl bg-[#2563EB] py-3 font-bold disabled:opacity-60"
-              >
-                {savingPrice ? "Salvando preço…" : "Salvar preço e continuar"}
-              </button>
-            </>
-          )}
-        </Modal>
+        <PricingModal
+          precoPiso={precoPisoExibido}
+          cenarios={cenarios}
+          cenarioEscolhido={cenarioEscolhido}
+          loading={loadingCenarios}
+          preco={preco}
+          error={priceModalError || cenariosError}
+          saving={savingPrice}
+          onPickCenario={selecionarCenario}
+          onPrecoChange={editarManualmente}
+          onRecarregar={() => {
+            setCenarioEscolhido("manual");
+            setPreco("");
+            if (createdProductId) fetchCenarios(createdProductId);
+          }}
+          onSalvar={persistEditedPrice}
+          close={() => setPriceModalOpen(false)}
+        />
       )}
     </div>
   );

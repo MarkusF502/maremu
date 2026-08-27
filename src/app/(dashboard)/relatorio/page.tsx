@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { apiFetch } from "@/src/lib/api";
+import { CountUp } from "@/src/components/CountUp";
 
 type Resumo = {
   liquidez_estoque: number;
@@ -189,7 +190,11 @@ function ParetoChart({ itens }: { itens: ItemCurvaAbc[] }) {
           return (
             <g key={`${item.produto}-${index}`}>
               <title>{`${item.produto}: ${formatCurrency(item.valor_estoque)} — Classe ${item.classe}`}</title>
-              <rect x={x} y={y} width={larguraBarra} height={Math.max(alturaBarra, 2)} rx="5" fill={fill} />
+              <rect
+                x={x} y={y} width={larguraBarra} height={Math.max(alturaBarra, 2)} rx="5" fill={fill}
+                className="mm-bar"
+                style={{ transformBox: 'fill-box', animationDelay: `calc(${index * 70}ms * var(--mm-scale, 1))` } as React.CSSProperties}
+              />
               <text x={x + larguraBarra / 2} y={altura - 41} textAnchor="middle" fill="#a9b7cf" fontSize="9.5">
                 {truncateLabel(item.produto)}
               </text>
@@ -200,7 +205,11 @@ function ParetoChart({ itens }: { itens: ItemCurvaAbc[] }) {
           );
         })}
 
-        <polyline points={pontos} fill="none" stroke="#36e784" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" filter="url(#greenGlowReal)" />
+        <polyline
+          points={pontos} fill="none" stroke="#36e784" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" filter="url(#greenGlowReal)"
+          className="mm-line" pathLength={900}
+          style={{ animationDelay: 'calc(300ms * var(--mm-scale, 1))' }}
+        />
         {itens.map((item, index) => {
           const cx = margem.left + passo * index + passo / 2;
           const cy = margem.top + areaAltura - (item.percentual_acumulado / 100) * areaAltura;
@@ -275,8 +284,23 @@ function EmptyState({ texto }: { texto: string }) {
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <p className="font-medium text-slate-500">Carregando dados...</p>
+    <div className="-m-8 min-h-full bg-[#b8d7fc] px-5 py-8 sm:px-8 lg:px-12 mm-fade">
+      <div className="mx-auto max-w-[1280px]">
+        <div className="mb-8">
+          <div className="mm-skeleton h-9 w-80 rounded-lg" />
+          <div className="mm-skeleton h-4 w-64 rounded mt-3" style={{ animationDelay: '80ms' }} />
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="mm-skeleton h-40 rounded-[20px]" />
+            <div className="mm-skeleton h-40 rounded-[20px]" style={{ animationDelay: '80ms' }} />
+          </div>
+          <div className="grid gap-4">
+            <div className="mm-skeleton h-64 rounded-[20px]" style={{ animationDelay: '160ms' }} />
+            <div className="mm-skeleton h-64 rounded-[20px]" style={{ animationDelay: '240ms' }} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -327,15 +351,15 @@ export default function RelatorioPage() {
 
   if (erro || !relatorio) {
     return (
-      <div className="-m-8 flex min-h-[calc(100vh-1px)] items-center justify-center bg-[#b8d7fc] p-8">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg">
+      <div className="-m-8 flex min-h-[calc(100vh-1px)] items-center justify-center bg-[#b8d7fc] p-8 mm-fade">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg mm-pop-in">
           <AlertCircle className="mx-auto mb-4 text-red-500" size={38} />
           <h1 className="text-xl font-bold text-slate-900">Erro ao consultar o banco de dados</h1>
           <p className="mt-3 text-sm text-slate-600">{erro ?? "O relatório não retornou dados."}</p>
           <button
             type="button"
             onClick={() => void carregarRelatorio()}
-            className="mx-auto mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-500"
+            className="mx-auto mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-500 mm-hover"
           >
             <RefreshCw size={18} /> Tentar novamente
           </button>
@@ -349,7 +373,7 @@ export default function RelatorioPage() {
   const lucroRealizado = resumo.fonte_lucro_categoria === "vendas_realizadas";
 
   return (
-    <div className="-m-8 min-h-full bg-[#b8d7fc] px-5 py-8 sm:px-8 lg:px-12">
+    <div className="-m-8 min-h-full bg-[#b8d7fc] px-5 py-8 sm:px-8 lg:px-12 mm-screen-in">
       <div className="mx-auto max-w-[1280px]">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -358,17 +382,17 @@ export default function RelatorioPage() {
           </div>
         </div>
 
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] mm-stagger">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <article className="rounded-[20px] bg-[#24418f] p-7 text-white shadow-sm">
+            <article style={{ '--mm-i': 0 } as React.CSSProperties} className="rounded-[20px] bg-[#24418f] p-7 text-white shadow-sm mm-rise-in">
               <p className="mb-2 text-base text-blue-100">Liquidez em Estoque</p>
-              <p className="break-words text-[30px] font-extrabold leading-none tracking-tight sm:text-[36px]">{formatCurrency(resumo.liquidez_estoque)}</p>
+              <p className="break-words text-[30px] font-extrabold leading-none tracking-tight sm:text-[36px]"><CountUp to={resumo.liquidez_estoque} format={(v) => formatCurrency(v)} /></p>
               <p className="mt-4 max-w-[250px] text-xs leading-relaxed text-blue-100">
                 Potencial de faturamento de {resumo.total_unidades_estoque} peças, com base nos preços atuais cadastrados.
               </p>
             </article>
 
-            <article className="rounded-[20px] bg-[#572381] p-7 text-white shadow-sm">
+            <article style={{ '--mm-i': 1 } as React.CSSProperties} className="rounded-[20px] bg-[#572381] p-7 text-white shadow-sm mm-rise-in">
               <h2 className="mb-5 flex items-center gap-2 text-xl font-extrabold"><AlertCircle size={23} /> Alertas Críticos</h2>
               {alertasVisiveis.length > 0 ? (
                 <div className="space-y-4 pl-7 text-sm leading-[1.25] text-purple-50">
@@ -384,13 +408,13 @@ export default function RelatorioPage() {
           </div>
 
           <div className="grid gap-4">
-            <article className="rounded-[20px] border-t-[5px] border-[#09152f] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-6">
+            <article style={{ '--mm-i': 2 } as React.CSSProperties} className="rounded-[20px] border-t-[5px] border-[#09152f] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-6 mm-rise-in">
               <h2 className="mb-1 text-lg font-extrabold sm:text-xl">Análise de Curva ABC (Pareto)</h2>
               <p className="mb-2 text-xs text-[#7f94b6]">Classificação pelo valor de venda do estoque de cada produto.</p>
               <ParetoChart itens={relatorio.curva_abc} />
             </article>
 
-            <article className="overflow-hidden rounded-[20px] bg-[#0d1b3d] text-white shadow-sm">
+            <article style={{ '--mm-i': 3 } as React.CSSProperties} className="overflow-hidden rounded-[20px] bg-[#0d1b3d] text-white shadow-sm mm-rise-in">
               <h2 className="px-5 pb-4 pt-5 text-lg font-extrabold sm:px-6 sm:text-xl">Top peças com maior lucro unitário</h2>
               {relatorio.produtos_maior_lucro.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -407,7 +431,7 @@ export default function RelatorioPage() {
                     </thead>
                     <tbody className="text-[#a8b6ce]">
                       {relatorio.produtos_maior_lucro.map((produto, index) => (
-                        <tr key={`${produto.produto}-${index}`} className={index % 2 === 0 ? "bg-[#111f42]" : "bg-[#0e1b3a]"}>
+                        <tr key={`${produto.produto}-${index}`} className={`mm-hover ${index % 2 === 0 ? "bg-[#111f42]" : "bg-[#0e1b3a]"}`}>
                           <td className="px-5 py-3.5 font-medium">{produto.produto}</td>
                           <td className="px-4 py-3.5">{formatCurrency(produto.custo)}</td>
                           <td className="px-4 py-3.5">{formatCurrency(produto.venda)}</td>
@@ -423,22 +447,22 @@ export default function RelatorioPage() {
                 <div className="px-5 pb-5"><EmptyState texto="Cadastre preço de venda nos produtos para calcular o lucro." /></div>
               )}
               <p className="bg-[#0a1533] px-5 py-4 text-center text-[11px] font-semibold text-violet-400">
-                Lucro médio ponderado por peça em estoque: {formatCurrency(resumo.lucro_medio_peca)}
+                Lucro médio ponderado por peça em estoque: <CountUp to={resumo.lucro_medio_peca} format={(v) => formatCurrency(v)} />
               </p>
             </article>
           </div>
         </section>
 
-        <section className="mt-4 rounded-[20px] bg-[#0d1b3d] px-5 py-5 text-white shadow-sm sm:px-7">
+        <section className="mt-4 rounded-[20px] bg-[#0d1b3d] px-5 py-5 text-white shadow-sm sm:px-7 mm-rise-in">
           <h2 className="mb-5 text-xl font-extrabold sm:text-2xl">Distribuição de Estoque por Nicho</h2>
           {relatorio.estoque_por_categoria.length > 0 ? (
-            <div className="space-y-4">
-              {relatorio.estoque_por_categoria.map((item) => (
-                <div key={item.categoria} className="grid grid-cols-[105px_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[145px_minmax(0,1fr)]">
+            <div className="space-y-4 mm-stagger">
+              {relatorio.estoque_por_categoria.map((item, index) => (
+                <div key={item.categoria} style={{ '--mm-i': index } as React.CSSProperties} className="grid grid-cols-[105px_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[145px_minmax(0,1fr)] mm-fade">
                   <span className="truncate text-right text-xs font-extrabold sm:text-sm" title={item.categoria}>{item.categoria}</span>
                   <div className="h-8 overflow-hidden rounded-md bg-[#182542]">
                     <div
-                      className="flex h-full min-w-fit items-center justify-end rounded-md bg-gradient-to-r from-blue-500 to-violet-500 px-3 text-sm font-extrabold text-white"
+                      className="mm-row flex h-full min-w-fit items-center justify-end rounded-md bg-gradient-to-r from-blue-500 to-violet-500 px-3 text-sm font-extrabold text-white"
                       style={{ width: `${Math.max(item.percentual, item.percentual > 0 ? 7 : 0)}%` }}
                       title={`${item.quantidade} unidades`}
                     >
@@ -454,8 +478,8 @@ export default function RelatorioPage() {
           <p className="mt-6 text-center text-sm italic text-[#7f94b6]">Percentual calculado sobre as unidades reais cadastradas nas variantes dos produtos.</p>
         </section>
 
-        <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
-          <article className="rounded-[20px] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-7">
+        <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_260px] mm-stagger">
+          <article style={{ '--mm-i': 0 } as React.CSSProperties} className="rounded-[20px] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-7 mm-rise-in">
             <h2 className="mb-2 border-l-4 border-violet-500 pl-4 text-xl font-extrabold sm:text-2xl">Composição do Lucro por Categoria</h2>
             <p className="mb-6 pl-5 text-xs text-[#7f94b6]">
               {lucroRealizado
@@ -465,14 +489,14 @@ export default function RelatorioPage() {
             <DonutChart categorias={relatorio.lucro_por_categoria} />
           </article>
 
-          <article className="flex flex-col justify-center rounded-[20px] bg-[#102c72] p-7 text-white shadow-sm">
+          <article style={{ '--mm-i': 1 } as React.CSSProperties} className="flex flex-col justify-center rounded-[20px] bg-[#102c72] p-7 text-white shadow-sm mm-rise-in">
             <h2 className="mb-7 text-xl font-extrabold">UPT e Ticket Médio</h2>
             <div>
-              <p className="text-5xl font-extrabold leading-none">{formatNumber(resumo.upt, 2)}</p>
+              <p className="text-5xl font-extrabold leading-none"><CountUp to={resumo.upt} format={(v) => formatNumber(v, 2)} /></p>
               <p className="mt-1 text-sm font-bold">UPT (Peças por Venda)</p>
             </div>
             <div className="mt-8">
-              <p className="break-words text-4xl font-extrabold leading-none">{formatCurrency(resumo.ticket_medio)}</p>
+              <p className="break-words text-4xl font-extrabold leading-none"><CountUp to={resumo.ticket_medio} format={(v) => formatCurrency(v)} /></p>
               <p className="mt-1 text-sm font-bold">Ticket Médio por Pedido</p>
             </div>
             <p className="mt-7 text-xs text-blue-200">Base: {resumo.total_pedidos} {resumo.total_pedidos === 1 ? "pedido registrado" : "pedidos registrados"}.</p>
