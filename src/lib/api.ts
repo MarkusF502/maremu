@@ -12,24 +12,20 @@ function getXsrfTokenFromCookie(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-// Garante que o cookie XSRF-TOKEN existe antes de requisições que mutam
+// Garante que existe um cookie XSRF-TOKEN antes de requisições que mutam
 // estado (POST/PUT/PATCH/DELETE), exigido pelo fluxo stateful do Sanctum.
-async function ensureCsrfCookie() {
-  if (getXsrfTokenFromCookie()) return;
+// `force` ignora um cookie já existente e busca um novo mesmo assim — usado
+// no retry de 419 abaixo, porque um XSRF-TOKEN presente não é garantia de
+// que ele ainda é válido (sessão expirada, cookie de uma execução anterior
+// do backend, etc.) e o Sanctum não tem como "consertar" um token velho.
+async function ensureCsrfCookie(force = false) {
+  if (!force && getXsrfTokenFromCookie()) return;
   await fetch(`${API_URL}/sanctum/csrf-cookie`, { credentials: 'include' });
 }
 
-export async function apiFetch(path: string, options: RequestInit = {}) {
-  const method = (options.method ?? 'GET').toUpperCase();
-
-  if (!SAFE_METHODS.has(method)) {
-    await ensureCsrfCookie();
-  }
-
-  // 1. Inicializa a classe nativa de cabeçalhos herdando o que já veio nas options
+function buildHeaders(options: RequestInit, method: string): Headers {
   const headers = new Headers(options.headers);
 
-  // 2. Define os padrões se eles ainda não existirem
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
@@ -37,14 +33,13 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     headers.set('Accept', 'application/json');
   }
 
-  // 3. Anexa o Bearer token salvo no localStorage, quando existir
   const token = getToken();
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // 3b. Anexa o header X-XSRF-TOKEN exigido pelo fluxo stateful do Sanctum
-  // em requisições que mutam estado.
+  // Anexa o header X-XSRF-TOKEN exigido pelo fluxo stateful do Sanctum em
+  // requisições que mutam estado.
   if (!SAFE_METHODS.has(method)) {
     const xsrfToken = getXsrfTokenFromCookie();
     if (xsrfToken) {
@@ -52,14 +47,45 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     }
   }
 
-  // 4. Executa a requisição
+  return headers;
+}
+
+export async function apiFetch(path: string, options: RequestInit = {}) {
+  const method = (options.method ?? 'GET').toUpperCase();
+  const isMutating = !SAFE_METHODS.has(method);
+
+  if (isMutating) {
+    await ensureCsrfCookie();
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    headers, // Passa a nossa classe Headers formatada
+    headers: buildHeaders(options, method),
     credentials: 'include', // Envia/recebe os cookies de sessão e XSRF-TOKEN
   });
 
-  // 5. Sessão expirada ou token revogado: limpa o token salvo.
+  // 419 = CSRF token mismatch. Acontece quando o cookie XSRF-TOKEN que já
+  // existia no navegador ficou desatualizado (sessão expirada, cookie de
+  // antes de reiniciar o backend, etc.) — ensureCsrfCookie() acima não
+  // detecta isso sozinho porque só checa se o cookie *existe*, não se ele
+  // ainda é válido. Busca um cookie novo à força e tenta a requisição uma
+  // única vez de novo antes de desistir.
+  if (res.status === 419 && isMutating) {
+    await ensureCsrfCookie(true);
+    const retryRes = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: buildHeaders(options, method),
+      credentials: 'include',
+    });
+
+    if (retryRes.status === 401) {
+      clearToken();
+    }
+
+    return retryRes;
+  }
+
+  // Sessão expirada ou token revogado: limpa o token salvo.
   // Não força redirecionamento aqui para não acoplar o apiFetch ao roteador —
   // isso fica a cargo de quem chamou.
   if (res.status === 401) {

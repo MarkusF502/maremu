@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import CurrencyInput from "@/src/components/CurrencyInput";
+import PendenciaWizardModal, { Pendencia } from "@/src/components/onboarding/PendenciaWizardModal";
 
 // ── Tipos ────────────────────────────────────────────────────────────────
 
@@ -803,6 +804,98 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Wizard de pendências (Spec-Extracao-Assertiva-Onboarding-Maremu §10):
+  // sobreposto à Tela 2 (descrição) — não é uma tela nova, não navega.
+  const [pendencias, setPendencias] = useState<Pendencia[] | null>(null);
+  const [sessaoId, setSessaoId] = useState<string | null>(null);
+  const [canaisSugeridosPendentes, setCanaisSugeridosPendentes] = useState<string[]>([]);
+  // posicionamento segue fora do escopo do wizard de pendências (Spec-
+  // Extracao-Assertiva-Onboarding-Maremu §2) — nunca muda com base em
+  // custo/faturamento/volume/margem, então continua vindo só da primeira
+  // resposta de analisar-texto. margem_lucro_desejada e volume_vendas_esperado
+  // usados como fallback aqui também, mas só para o caminho sem pendências —
+  // quando o wizard resolve algo (Rota 2 sincronizada, ou as próprias
+  // pendências de volume/margem), o valor atualizado vem de
+  // responder-pendencias e prevalece (ver irParaRevisaoIa).
+  const [estimativasBase, setEstimativasBase] = useState<Omit<EstimativasIa, "faturamento_medio_mensal" | "custo_fixo_mensal"> | null>(null);
+
+  const irParaRevisaoIa = (
+    logId: string,
+    custoFixoMensal: number,
+    faturamentoMedioMensal: number,
+    canaisSugeridos: string[],
+    volumeVendasEsperado?: number,
+    margemLucroDesejada?: number,
+  ) => {
+    setEtapa({
+      tipo: "revisao_ia",
+      logId,
+      estimativas: {
+        posicionamento: estimativasBase?.posicionamento ?? { valor: "medio", explicacao: "" },
+        faturamento_medio_mensal: { valor: faturamentoMedioMensal, explicacao: "Calculado a partir dos itens que você descreveu e confirmou." },
+        custo_fixo_mensal: { valor: custoFixoMensal, explicacao: "Calculado a partir dos itens que você descreveu e confirmou." },
+        margem_lucro_desejada:
+          margemLucroDesejada !== undefined
+            ? { valor: margemLucroDesejada, explicacao: estimativasBase?.margem_lucro_desejada?.explicacao ?? "" }
+            : estimativasBase?.margem_lucro_desejada ?? { valor: 0.25, explicacao: "" },
+        volume_vendas_esperado:
+          volumeVendasEsperado !== undefined
+            ? { valor: volumeVendasEsperado, explicacao: estimativasBase?.volume_vendas_esperado?.explicacao ?? "" }
+            : estimativasBase?.volume_vendas_esperado ?? { valor: 0, explicacao: "" },
+      },
+      canaisSugeridos,
+    });
+  };
+
+  const handleResponderPendencias = async (respostas: { id: string; resposta: string | number }[]) => {
+    if (!sessaoId) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch("/api/loja/onboarding/responder-pendencias", {
+        method: "POST",
+        body: JSON.stringify({ sessao_id: sessaoId, respostas }),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        setError(d.message || "Erro ao processar suas respostas.");
+        return;
+      }
+
+      const data = await res.json();
+
+      if (data.status === "pendente") {
+        setPendencias(data.pendencias_restantes);
+        return;
+      }
+
+      // status === "concluido"
+      setPendencias(null);
+      irParaRevisaoIa(
+        sessaoId,
+        data.custo_fixo_mensal,
+        data.faturamento_medio_mensal,
+        canaisSugeridosPendentes,
+        data.volume_vendas_esperado,
+        data.margem_lucro_desejada,
+      );
+    } catch {
+      setError("Erro de conexão com o servidor.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRevisarManualmente = () => {
+    // Checagem cruzada (SPEC §8.3): "deixa eu revisar" não gera novas
+    // pendências — vai direto pra Tela 3 com custo/faturamento em branco
+    // pra edição manual.
+    if (!sessaoId) return;
+    setPendencias(null);
+    irParaRevisaoIa(sessaoId, 0, 0, canaisSugeridosPendentes);
+  };
+
   const handleFactual = (data: DadosFactuais) => {
     setDadosFactuais(data);
     setEtapa({ tipo: "descricao" });
@@ -836,10 +929,25 @@ export default function OnboardingPage() {
         return;
       }
 
+      setSessaoId(data.sessao_id ?? data.log_id);
+      setCanaisSugeridosPendentes(data.canais_sugeridos ?? []);
+
+      const estimativasResolvidas = data.estimativas ?? data.estimativas_resolvidas;
+      setEstimativasBase({
+        posicionamento: estimativasResolvidas.posicionamento,
+        margem_lucro_desejada: estimativasResolvidas.margem_lucro_desejada,
+        volume_vendas_esperado: estimativasResolvidas.volume_vendas_esperado,
+      });
+
+      if (data.pendencias && data.pendencias.length > 0) {
+        setPendencias(data.pendencias);
+        return;
+      }
+
       setEtapa({
         tipo: "revisao_ia",
         logId: data.log_id,
-        estimativas: data.estimativas,
+        estimativas: estimativasResolvidas,
         canaisSugeridos: data.canais_sugeridos ?? [],
       });
     } catch {
@@ -954,18 +1062,35 @@ export default function OnboardingPage() {
     }
   };
 
+  const wizard = pendencias && pendencias.length > 0 && (
+    <PendenciaWizardModal
+      // Força o remount a cada nova leva de pendências (analisar-texto ou
+      // cada resposta de responder-pendencias devolve um array novo) — sem
+      // isso o índice interno do wizard não reseta e ele trava depois que
+      // o array de pendências fica menor que o índice atual.
+      key={pendencias.map((p) => p.id).join("|")}
+      pendencias={pendencias}
+      onConcluir={handleResponderPendencias}
+      onRevisarManualmente={handleRevisarManualmente}
+      isLoading={isLoading}
+    />
+  );
+
   switch (etapa.tipo) {
     case "factual":
       return <TelaFactual onSubmit={handleFactual} error={error} />;
 
     case "descricao":
       return (
-        <TelaDescricao
-          onSubmit={handleAnalisarTexto}
-          onVoltar={() => setEtapa({ tipo: "factual" })}
-          isLoading={isLoading}
-          error={error}
-        />
+        <>
+          <TelaDescricao
+            onSubmit={handleAnalisarTexto}
+            onVoltar={() => setEtapa({ tipo: "factual" })}
+            isLoading={isLoading}
+            error={error}
+          />
+          {wizard}
+        </>
       );
 
     case "fallback_perguntas":
