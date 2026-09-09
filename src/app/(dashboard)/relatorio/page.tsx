@@ -65,16 +65,8 @@ type RelatorioResponse = {
   lucro_por_categoria: LucroCategoria[];
 };
 
-const CORES_CATEGORIAS = [
-  "#8b5cf6",
-  "#3b82f6",
-  "#f59e0b",
-  "#ef4444",
-  "#22c55e",
-  "#06b6d4",
-  "#ec4899",
-  "#a3e635",
-];
+const CORES_CATEGORIAS = ["#1a3673", "#0080ff", "#6aa4f8", "#10b981", "#c3d4ea", "#f59e0b", "#a855f7", "#64748b"];
+const CLASSE_COR: Record<ItemCurvaAbc["classe"], string> = { A: "#1a3673", B: "#2563eb", C: "#c3d4ea" };
 
 function formatCurrency(value: number, maximumFractionDigits = 2) {
   return new Intl.NumberFormat("pt-BR", {
@@ -91,7 +83,7 @@ function formatNumber(value: number, maximumFractionDigits = 1) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-function truncateLabel(label: string, max = 16) {
+function truncateLabel(label: string, max = 14) {
   return label.length > max ? `${label.slice(0, max - 1)}…` : label;
 }
 
@@ -101,14 +93,14 @@ function ParetoChart({ itens }: { itens: ItemCurvaAbc[] }) {
   }
 
   const largura = 720;
-  const altura = 300;
-  const margem = { top: 25, right: 50, bottom: 70, left: 76 };
+  const altura = 260;
+  const margem = { top: 16, right: 44, bottom: 56, left: 68 };
   const areaLargura = largura - margem.left - margem.right;
   const areaAltura = altura - margem.top - margem.bottom;
   const maiorValor = Math.max(...itens.map((item) => item.valor_estoque), 1);
   const maxValor = maiorValor * 1.12;
   const passo = areaLargura / itens.length;
-  const larguraBarra = Math.min(passo * 0.67, 58);
+  const larguraBarra = Math.min(passo * 0.62, 40);
   const pontos = itens
     .map((item, index) => {
       const x = margem.left + passo * index + passo / 2;
@@ -123,90 +115,55 @@ function ParetoChart({ itens }: { itens: ItemCurvaAbc[] }) {
     <div className="w-full overflow-x-auto pb-1">
       <svg
         viewBox={`0 0 ${largura} ${altura}`}
-        className="h-auto min-w-[590px] w-full"
+        className="h-auto min-w-140 w-full"
         role="img"
         aria-label="Curva ABC calculada com o valor real do estoque"
       >
-        <defs>
-          <linearGradient id="pareto-bar-a-real" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#6d3ce8" />
-          </linearGradient>
-          <linearGradient id="pareto-bar-b-real" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#438df6" />
-            <stop offset="100%" stopColor="#2875dc" />
-          </linearGradient>
-          <linearGradient id="pareto-bar-c-real" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#9ba9c3" />
-            <stop offset="100%" stopColor="#7c8ba7" />
-          </linearGradient>
-          <filter id="greenGlowReal" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-
         {ticksValor.map((valor) => {
           const y = margem.top + areaAltura - (valor / maxValor) * areaAltura;
           return (
             <g key={valor}>
-              <line x1={margem.left} x2={largura - margem.right} y1={y} y2={y} stroke="#33415f" strokeWidth="1" opacity="0.45" />
-              <text x={margem.left - 12} y={y + 4} textAnchor="end" fill="#9aa9c4" fontSize="11">
+              <line x1={margem.left} x2={largura - margem.right} y1={y} y2={y} stroke="#f1f4fa" strokeWidth="1" />
+              <text x={margem.left - 10} y={y + 4} textAnchor="end" fill="#a3b0c4" fontSize="10.5" fontWeight={600}>
                 {formatCurrency(valor, 0)}
               </text>
             </g>
           );
         })}
 
-        {[0, 20, 40, 60, 80, 100].map((valor) => {
-          const y = margem.top + areaAltura - (valor / 100) * areaAltura;
-          return <text key={valor} x={largura - margem.right + 12} y={y + 4} fill="#9aa9c4" fontSize="11">{valor}%</text>;
-        })}
+        <line x1={margem.left} x2={largura - margem.right} y1={margem.top + areaAltura} y2={margem.top + areaAltura} stroke="#e8edf6" strokeWidth="1" />
 
         <line
-          x1={margem.left}
-          x2={largura - margem.right}
-          y1={margem.top + areaAltura * 0.2}
-          y2={margem.top + areaAltura * 0.2}
-          stroke="#ef5a72"
-          strokeDasharray="6 5"
-          opacity="0.65"
+          x1={margem.left} x2={largura - margem.right}
+          y1={margem.top + areaAltura * 0.2} y2={margem.top + areaAltura * 0.2}
+          stroke="#f4a3ac" strokeDasharray="6 5"
         />
-        <text x={largura - margem.right - 6} y={margem.top + areaAltura * 0.2 - 7} textAnchor="end" fill="#ef5a72" fontSize="10">Corte 80%</text>
+        <text x={largura - margem.right} y={margem.top + areaAltura * 0.2 - 7} textAnchor="end" fill="#e26a78" fontSize="10" fontWeight={700}>
+          corte 80%
+        </text>
 
         {itens.map((item, index) => {
           const alturaBarra = (item.valor_estoque / maxValor) * areaAltura;
           const x = margem.left + passo * index + (passo - larguraBarra) / 2;
           const y = margem.top + areaAltura - alturaBarra;
-          const fill = item.classe === "A"
-            ? "url(#pareto-bar-a-real)"
-            : item.classe === "B"
-              ? "url(#pareto-bar-b-real)"
-              : "url(#pareto-bar-c-real)";
 
           return (
             <g key={`${item.produto}-${index}`}>
               <title>{`${item.produto}: ${formatCurrency(item.valor_estoque)} — Classe ${item.classe}`}</title>
               <rect
-                x={x} y={y} width={larguraBarra} height={Math.max(alturaBarra, 2)} rx="5" fill={fill}
+                x={x} y={y} width={larguraBarra} height={Math.max(alturaBarra, 2)} rx="5" fill={CLASSE_COR[item.classe]}
                 className="mm-bar"
                 style={{ transformBox: 'fill-box', animationDelay: `calc(${index * 70}ms * var(--mm-scale, 1))` } as React.CSSProperties}
               />
-              <text x={x + larguraBarra / 2} y={altura - 41} textAnchor="middle" fill="#a9b7cf" fontSize="9.5">
+              <text x={x + larguraBarra / 2} y={altura - 34} textAnchor="middle" fill="#94a3b8" fontSize="9.5" fontWeight={600}>
                 {truncateLabel(item.produto)}
-              </text>
-              <text x={x + larguraBarra / 2} y={altura - 26} textAnchor="middle" fill="#6f82a5" fontSize="8.5">
-                {formatCurrency(item.valor_estoque, 0)}
               </text>
             </g>
           );
         })}
 
         <polyline
-          points={pontos} fill="none" stroke="#36e784" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" filter="url(#greenGlowReal)"
+          points={pontos} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"
           className="mm-line" pathLength={900}
           style={{ animationDelay: 'calc(300ms * var(--mm-scale, 1))' }}
         />
@@ -216,17 +173,17 @@ function ParetoChart({ itens }: { itens: ItemCurvaAbc[] }) {
           return (
             <g key={`${item.produto}-point-${index}`}>
               <title>{`${formatNumber(item.percentual_acumulado)}% acumulado`}</title>
-              <circle cx={cx} cy={cy} r="5" fill="#36e784" stroke="#123d31" strokeWidth="2" />
+              <circle cx={cx} cy={cy} r="4" fill="#fff" stroke="#10b981" strokeWidth="2.5" />
             </g>
           );
         })}
       </svg>
 
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] text-[#9aa9c4] sm:text-xs">
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-violet-500" /> Classe A</span>
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-blue-500" /> Classe B</span>
-        <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm bg-slate-400" /> Classe C</span>
-        <span className="flex items-center gap-1.5"><i className="h-0.5 w-4 bg-emerald-400" /> Percentual acumulado</span>
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11.5px] font-semibold text-[#64748b]">
+        <span className="flex items-center gap-1.5"><i className="block h-2.25 w-2.25 rounded-[3px]" style={{ background: CLASSE_COR.A }} />Classe A</span>
+        <span className="flex items-center gap-1.5"><i className="block h-2.25 w-2.25 rounded-[3px]" style={{ background: CLASSE_COR.B }} />Classe B</span>
+        <span className="flex items-center gap-1.5"><i className="block h-2.25 w-2.25 rounded-[3px]" style={{ background: CLASSE_COR.C }} />Classe C</span>
+        <span className="flex items-center gap-1.5"><i className="block h-0.5 w-4 bg-[#10b981]" />Percentual acumulado</span>
       </div>
     </div>
   );
@@ -236,7 +193,7 @@ function DonutChart({ categorias }: { categorias: LucroCategoria[] }) {
   const categoriasValidas = categorias.filter((categoria) => categoria.percentual > 0);
 
   const gradient = useMemo(() => {
-    if (categoriasValidas.length === 0) return "conic-gradient(#243250 0% 100%)";
+    if (categoriasValidas.length === 0) return "conic-gradient(#eef2f9 0% 100%)";
 
     let acumulado = 0;
     const partes = categoriasValidas.map((categoria, index) => {
@@ -254,20 +211,20 @@ function DonutChart({ categorias }: { categorias: LucroCategoria[] }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-6 md:flex-row md:justify-center lg:gap-10">
-      <div
-        className="relative h-52 w-52 shrink-0 rounded-full"
-        style={{ background: gradient }}
-        aria-label="Composição do lucro por categoria com dados do banco"
-      >
-        <div className="absolute inset-[27%] rounded-full bg-[#0d1b3d]" />
+    <div className="flex items-center gap-5">
+      <div className="relative h-29.5 w-29.5 shrink-0 rounded-full" style={{ background: gradient }}>
+        <div className="absolute inset-[27%] flex flex-col items-center justify-center rounded-full bg-white">
+          <span className="text-[13.5px] font-extrabold text-[#0f172a]">{categoriasValidas.length}</span>
+          <span className="text-[9px] font-semibold tracking-[.04em] text-[#94a3b8]">NICHOS</span>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs text-[#a7b6cf] md:grid-cols-1">
+      <div className="flex min-w-0 flex-col gap-2 text-[12.5px] text-[#475569]">
         {categoriasValidas.map((categoria, index) => (
-          <div key={categoria.categoria} className="flex items-center gap-2" title={formatCurrency(categoria.lucro)}>
-            <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: CORES_CATEGORIAS[index % CORES_CATEGORIAS.length] }} />
-            <span>{categoria.categoria} ({formatNumber(categoria.percentual)}%)</span>
-          </div>
+          <span key={categoria.categoria} className="flex items-center gap-2" title={formatCurrency(categoria.lucro)}>
+            <i className="block h-2.25 w-2.25 shrink-0 rounded-[3px]" style={{ background: CORES_CATEGORIAS[index % CORES_CATEGORIAS.length] }} />
+            <span className="truncate">{categoria.categoria}</span>
+            <b className="ml-auto shrink-0 text-[#0f172a]">{formatNumber(categoria.percentual)}%</b>
+          </span>
         ))}
       </div>
     </div>
@@ -276,7 +233,7 @@ function DonutChart({ categorias }: { categorias: LucroCategoria[] }) {
 
 function EmptyState({ texto }: { texto: string }) {
   return (
-    <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-white/15 bg-white/[0.025] px-5 text-center text-sm text-[#8294b2]">
+    <div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed border-[#e4eaf4] bg-[#f8fafd] px-5 text-center text-sm text-[#8494ad]">
       {texto}
     </div>
   );
@@ -284,23 +241,22 @@ function EmptyState({ texto }: { texto: string }) {
 
 function LoadingScreen() {
   return (
-    <div className="-m-8 min-h-full bg-[#b8d7fc] px-5 py-8 sm:px-8 lg:px-12 mm-fade">
-      <div className="mx-auto max-w-[1280px]">
-        <div className="mb-8">
-          <div className="mm-skeleton h-9 w-80 rounded-lg" />
-          <div className="mm-skeleton h-4 w-64 rounded mt-3" style={{ animationDelay: '80ms' }} />
-        </div>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="mm-skeleton h-40 rounded-[20px]" />
-            <div className="mm-skeleton h-40 rounded-[20px]" style={{ animationDelay: '80ms' }} />
-          </div>
-          <div className="grid gap-4">
-            <div className="mm-skeleton h-64 rounded-[20px]" style={{ animationDelay: '160ms' }} />
-            <div className="mm-skeleton h-64 rounded-[20px]" style={{ animationDelay: '240ms' }} />
-          </div>
+    <div className="max-w-330 px-8.5 pb-13 pt-7.5 mm-fade">
+      <div className="mm-skeleton h-7 w-64 rounded-lg" />
+      <div className="mm-skeleton mt-3 h-4 w-72 rounded" style={{ animationDelay: '80ms' }} />
+      <div className="mt-6.5 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(258px, 1fr))' }}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="mm-skeleton h-32 rounded-2xl" style={{ animationDelay: `${i * 80}ms` }} />
+        ))}
+      </div>
+      <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: 'minmax(0,1.75fr) minmax(0,1fr)' }}>
+        <div className="mm-skeleton h-88 rounded-2xl" />
+        <div className="flex flex-col gap-4">
+          <div className="mm-skeleton h-40 rounded-2xl" />
+          <div className="mm-skeleton h-52 rounded-2xl" style={{ animationDelay: '80ms' }} />
         </div>
       </div>
+      <div className="mm-skeleton mt-4 h-64 rounded-2xl" />
     </div>
   );
 }
@@ -351,15 +307,15 @@ export default function RelatorioPage() {
 
   if (erro || !relatorio) {
     return (
-      <div className="-m-8 flex min-h-[calc(100vh-1px)] items-center justify-center bg-[#b8d7fc] p-8 mm-fade">
-        <div className="w-full max-w-lg rounded-2xl bg-white p-8 text-center shadow-lg mm-pop-in">
+      <div className="flex h-full items-center justify-center p-8 mm-fade">
+        <div className="w-full max-w-lg rounded-2xl border border-[#e4eaf4] bg-white p-8 text-center shadow-sm mm-pop-in">
           <AlertCircle className="mx-auto mb-4 text-red-500" size={38} />
-          <h1 className="text-xl font-bold text-slate-900">Erro ao consultar o banco de dados</h1>
-          <p className="mt-3 text-sm text-slate-600">{erro ?? "O relatório não retornou dados."}</p>
+          <h1 className="text-xl font-bold text-[#0f172a]">Erro ao consultar o banco de dados</h1>
+          <p className="mt-3 text-sm text-[#64748b]">{erro ?? "O relatório não retornou dados."}</p>
           <button
             type="button"
             onClick={() => void carregarRelatorio()}
-            className="mx-auto mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-500 mm-hover"
+            className="mm-hover mx-auto mt-6 flex items-center gap-2 rounded-xl bg-[#1a3673] px-5 py-3 font-bold text-white hover:bg-[#0080ff]"
           >
             <RefreshCw size={18} /> Tentar novamente
           </button>
@@ -369,139 +325,125 @@ export default function RelatorioPage() {
   }
 
   const { resumo } = relatorio;
-  const alertasVisiveis = relatorio.alertas_criticos.slice(0, 6);
   const lucroRealizado = resumo.fonte_lucro_categoria === "vendas_realizadas";
 
   return (
-    <div className="-m-8 min-h-full bg-[#b8d7fc] px-5 py-8 sm:px-8 lg:px-12 mm-screen-in">
-      <div className="mx-auto max-w-[1280px]">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Visão Geral Financeira</h1>
-            <p className="mt-2 text-sm font-medium text-slate-600">Dados atualizados diretamente do banco da loja.</p>
+    <div className="max-w-330 px-8.5 pb-13 pt-7.5 mm-screen-in">
+
+      <div className="mb-5.5">
+        <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Relatório da loja</p>
+        <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">Visão geral financeira</h1>
+        <p className="mt-1.5 text-sm text-[#64748b]">
+          Dados atualizados diretamente do banco da loja · {resumo.total_pedidos} {resumo.total_pedidos === 1 ? "pedido registrado" : "pedidos registrados"}
+        </p>
+      </div>
+
+      <div className="mm-stagger grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(258px, 1fr))' }}>
+        <div className="mm-rise-in rounded-2xl bg-[#1a3673] p-6.5 text-white" style={{ '--mm-i': 0 } as React.CSSProperties}>
+          <p className="text-[11.5px] font-bold uppercase tracking-[.07em] text-[#a8c2ee]">Liquidez em estoque</p>
+          <p className="mt-3 whitespace-nowrap text-[clamp(23px,2.2vw,33px)] font-extrabold tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <CountUp to={resumo.liquidez_estoque} format={(v) => formatCurrency(v)} />
+          </p>
+          <p className="mt-2.5 max-w-67.5 text-[12.5px] leading-relaxed text-[#bcd0f2]">
+            Potencial de faturamento de {resumo.total_unidades_estoque} peças, com base nos preços atuais cadastrados.
+          </p>
+        </div>
+
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-6.5" style={{ '--mm-i': 1 } as React.CSSProperties}>
+          <p className="text-[11.5px] font-bold uppercase tracking-[.07em] text-[#8494ad]">UPT · peças por venda</p>
+          <p className="mt-3 whitespace-nowrap text-[clamp(23px,2.2vw,33px)] font-extrabold tracking-tight text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <CountUp to={resumo.upt} format={(v) => formatNumber(v, 2)} />
+          </p>
+          <p className="mt-2.5 text-[12.5px] text-[#64748b]">Lucro médio ponderado por peça: {formatCurrency(resumo.lucro_medio_peca)}</p>
+        </div>
+
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-6.5" style={{ '--mm-i': 2 } as React.CSSProperties}>
+          <p className="text-[11.5px] font-bold uppercase tracking-[.07em] text-[#8494ad]">Ticket médio por pedido</p>
+          <p className="mt-3 whitespace-nowrap text-[clamp(23px,2.2vw,33px)] font-extrabold tracking-tight text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+            <CountUp to={resumo.ticket_medio} format={(v) => formatCurrency(v)} />
+          </p>
+          <p className="mt-2.5 text-[12.5px] text-[#64748b]">
+            Base: {resumo.total_pedidos} {resumo.total_pedidos === 1 ? "pedido registrado" : "pedidos registrados"}
+          </p>
+        </div>
+      </div>
+
+      <div className="mm-stagger mt-4 grid items-start gap-4" style={{ gridTemplateColumns: 'minmax(0,1.75fr) minmax(0,1fr)' }}>
+
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-6.5" style={{ '--mm-i': 3 } as React.CSSProperties}>
+          <h2 className="text-[17px] font-bold text-[#0f172a]">Curva ABC (Pareto)</h2>
+          <p className="mt-1 text-[13px] text-[#64748b]">Classificação pelo valor de venda do estoque de cada produto</p>
+          <div className="mt-6.5">
+            <ParetoChart itens={relatorio.curva_abc} />
           </div>
         </div>
 
-        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_minmax(0,1fr)] mm-stagger">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <article style={{ '--mm-i': 0 } as React.CSSProperties} className="rounded-[20px] bg-[#24418f] p-7 text-white shadow-sm mm-rise-in">
-              <p className="mb-2 text-base text-blue-100">Liquidez em Estoque</p>
-              <p className="break-words text-[30px] font-extrabold leading-none tracking-tight sm:text-[36px]"><CountUp to={resumo.liquidez_estoque} format={(v) => formatCurrency(v)} /></p>
-              <p className="mt-4 max-w-[250px] text-xs leading-relaxed text-blue-100">
-                Potencial de faturamento de {resumo.total_unidades_estoque} peças, com base nos preços atuais cadastrados.
-              </p>
-            </article>
-
-            <article style={{ '--mm-i': 1 } as React.CSSProperties} className="rounded-[20px] bg-[#572381] p-7 text-white shadow-sm mm-rise-in">
-              <h2 className="mb-5 flex items-center gap-2 text-xl font-extrabold"><AlertCircle size={23} /> Alertas Críticos</h2>
-              {alertasVisiveis.length > 0 ? (
-                <div className="space-y-4 pl-7 text-sm leading-[1.25] text-purple-50">
-                  {alertasVisiveis.map((alerta, index) => <p key={`${alerta.produto}-${alerta.tamanho}-${index}`}>{alerta.mensagem}</p>)}
-                  {relatorio.alertas_criticos.length > alertasVisiveis.length && (
-                    <p className="font-bold text-purple-200">+ {relatorio.alertas_criticos.length - alertasVisiveis.length} outros alertas</p>
-                  )}
-                </div>
-              ) : (
-                <p className="pl-7 text-sm text-purple-100">Nenhuma variante está abaixo do estoque mínimo.</p>
-              )}
-            </article>
+        <div className="flex flex-col gap-4">
+          <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ '--mm-i': 4 } as React.CSSProperties}>
+            <h3 className="text-[15px] font-bold text-[#0f172a]">Composição do lucro</h3>
+            <p className="mb-4.5 mt-1 text-[12.5px] text-[#64748b]">
+              {lucroRealizado ? "Pelas vendas registradas em pedidos" : "Lucro potencial do estoque atual"}
+            </p>
+            <DonutChart categorias={relatorio.lucro_por_categoria} />
           </div>
 
-          <div className="grid gap-4">
-            <article style={{ '--mm-i': 2 } as React.CSSProperties} className="rounded-[20px] border-t-[5px] border-[#09152f] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-6 mm-rise-in">
-              <h2 className="mb-1 text-lg font-extrabold sm:text-xl">Análise de Curva ABC (Pareto)</h2>
-              <p className="mb-2 text-xs text-[#7f94b6]">Classificação pelo valor de venda do estoque de cada produto.</p>
-              <ParetoChart itens={relatorio.curva_abc} />
-            </article>
-
-            <article style={{ '--mm-i': 3 } as React.CSSProperties} className="overflow-hidden rounded-[20px] bg-[#0d1b3d] text-white shadow-sm mm-rise-in">
-              <h2 className="px-5 pb-4 pt-5 text-lg font-extrabold sm:px-6 sm:text-xl">Top peças com maior lucro unitário</h2>
-              {relatorio.produtos_maior_lucro.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[730px] border-collapse text-left text-xs">
-                    <thead className="bg-[#19264c] text-white">
-                      <tr>
-                        <th className="px-5 py-4 font-bold">Produto</th>
-                        <th className="px-4 py-4 font-bold">Custo</th>
-                        <th className="px-4 py-4 font-bold">Venda</th>
-                        <th className="px-4 py-4 font-bold">Lucro Un.</th>
-                        <th className="px-4 py-4 font-bold">Markup</th>
-                        <th className="px-4 py-4 font-bold">Estoque</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-[#a8b6ce]">
-                      {relatorio.produtos_maior_lucro.map((produto, index) => (
-                        <tr key={`${produto.produto}-${index}`} className={`mm-hover ${index % 2 === 0 ? "bg-[#111f42]" : "bg-[#0e1b3a]"}`}>
-                          <td className="px-5 py-3.5 font-medium">{produto.produto}</td>
-                          <td className="px-4 py-3.5">{formatCurrency(produto.custo)}</td>
-                          <td className="px-4 py-3.5">{formatCurrency(produto.venda)}</td>
-                          <td className={`px-4 py-3.5 font-bold ${produto.lucro_unitario >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatCurrency(produto.lucro_unitario)}</td>
-                          <td className="px-4 py-3.5">{formatNumber(produto.margem_percentual)}%</td>
-                          <td className="px-4 py-3.5">{produto.estoque}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="px-5 pb-5"><EmptyState texto="Cadastre preço de venda nos produtos para calcular o lucro." /></div>
-              )}
-              <p className="bg-[#0a1533] px-5 py-4 text-center text-[11px] font-semibold text-violet-400">
-                Lucro médio ponderado por peça em estoque: <CountUp to={resumo.lucro_medio_peca} format={(v) => formatCurrency(v)} />
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section className="mt-4 rounded-[20px] bg-[#0d1b3d] px-5 py-5 text-white shadow-sm sm:px-7 mm-rise-in">
-          <h2 className="mb-5 text-xl font-extrabold sm:text-2xl">Distribuição de Estoque por Nicho</h2>
-          {relatorio.estoque_por_categoria.length > 0 ? (
-            <div className="space-y-4 mm-stagger">
-              {relatorio.estoque_por_categoria.map((item, index) => (
-                <div key={item.categoria} style={{ '--mm-i': index } as React.CSSProperties} className="grid grid-cols-[105px_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[145px_minmax(0,1fr)] mm-fade">
-                  <span className="truncate text-right text-xs font-extrabold sm:text-sm" title={item.categoria}>{item.categoria}</span>
-                  <div className="h-8 overflow-hidden rounded-md bg-[#182542]">
-                    <div
-                      className="mm-row flex h-full min-w-fit items-center justify-end rounded-md bg-gradient-to-r from-blue-500 to-violet-500 px-3 text-sm font-extrabold text-white"
-                      style={{ width: `${Math.max(item.percentual, item.percentual > 0 ? 7 : 0)}%` }}
-                      title={`${item.quantidade} unidades`}
-                    >
-                      {formatNumber(item.percentual)}%
+          <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ '--mm-i': 5 } as React.CSSProperties}>
+            <h3 className="mb-4.5 text-[15px] font-bold text-[#0f172a]">Distribuição de estoque por nicho</h3>
+            {relatorio.estoque_por_categoria.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {relatorio.estoque_por_categoria.map((item) => (
+                  <div key={item.categoria} className="grid grid-cols-[74px_minmax(0,1fr)] items-center gap-3">
+                    <span className="truncate text-right text-[12.5px] font-semibold text-[#475569]" title={item.categoria}>{item.categoria}</span>
+                    <div className="h-6 overflow-hidden rounded-[7px] bg-[#f1f5fb]">
+                      <div
+                        className="mm-row flex h-full min-w-fit items-center justify-end rounded-[7px] px-2.25 text-[11px] font-bold text-white"
+                        style={{ width: `${Math.max(item.percentual, item.percentual > 0 ? 9 : 0)}%`, background: 'linear-gradient(90deg,#1a3673,#2563eb)' }}
+                        title={`${item.quantidade} unidades`}
+                      >
+                        {formatNumber(item.percentual)}%
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState texto="Ainda não existem unidades em estoque para distribuir por categoria." />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mm-rise-in mt-4 overflow-hidden rounded-2xl border border-[#e4eaf4] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6.5 py-5.5 pb-4">
+          <h2 className="text-[17px] font-bold text-[#0f172a]">Top peças com maior lucro unitário</h2>
+          <span className="text-[12.5px] text-[#64748b]">
+            Lucro médio ponderado por peça em estoque: <b className="text-[#047857]">{formatCurrency(resumo.lucro_medio_peca)}</b>
+          </span>
+        </div>
+        {relatorio.produtos_maior_lucro.length > 0 ? (
+          <div className="overflow-x-auto">
+            <div className="min-w-165">
+              <div className="grid grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_0.8fr_0.8fr] gap-3 border-y border-[#eef2f8] bg-[#fafbfe] px-6.5 py-2.75 text-[11.5px] font-bold uppercase tracking-wider text-[#8494ad]">
+                <span>Produto</span><span>Categoria</span><span>Custo</span><span>Venda</span><span>Lucro un.</span><span>Markup</span>
+              </div>
+              {relatorio.produtos_maior_lucro.map((produto, index) => (
+                <div
+                  key={`${produto.produto}-${index}`}
+                  className="mm-hover grid grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_0.8fr_0.8fr] gap-3 border-b border-[#f4f7fb] px-6.5 py-3.25 text-[13.5px] text-[#334155] hover:bg-[#f8fbff]"
+                >
+                  <span className="truncate font-semibold text-[#0f172a]">{produto.produto}</span>
+                  <span className="truncate">{produto.categoria}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(produto.custo)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(produto.venda)}</span>
+                  <span className="font-bold text-[#047857]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(produto.lucro_unitario)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatNumber(produto.margem_percentual)}%</span>
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyState texto="Ainda não existem unidades em estoque para distribuir por categoria." />
-          )}
-          <p className="mt-6 text-center text-sm italic text-[#7f94b6]">Percentual calculado sobre as unidades reais cadastradas nas variantes dos produtos.</p>
-        </section>
-
-        <section className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_260px] mm-stagger">
-          <article style={{ '--mm-i': 0 } as React.CSSProperties} className="rounded-[20px] bg-[#0d1b3d] p-5 text-white shadow-sm sm:p-7 mm-rise-in">
-            <h2 className="mb-2 border-l-4 border-violet-500 pl-4 text-xl font-extrabold sm:text-2xl">Composição do Lucro por Categoria</h2>
-            <p className="mb-6 pl-5 text-xs text-[#7f94b6]">
-              {lucroRealizado
-                ? "Calculado pelas vendas registradas em pedidos e itens de pedido."
-                : "Sem vendas registradas: exibindo o lucro potencial do estoque atual."}
-            </p>
-            <DonutChart categorias={relatorio.lucro_por_categoria} />
-          </article>
-
-          <article style={{ '--mm-i': 1 } as React.CSSProperties} className="flex flex-col justify-center rounded-[20px] bg-[#102c72] p-7 text-white shadow-sm mm-rise-in">
-            <h2 className="mb-7 text-xl font-extrabold">UPT e Ticket Médio</h2>
-            <div>
-              <p className="text-5xl font-extrabold leading-none"><CountUp to={resumo.upt} format={(v) => formatNumber(v, 2)} /></p>
-              <p className="mt-1 text-sm font-bold">UPT (Peças por Venda)</p>
-            </div>
-            <div className="mt-8">
-              <p className="break-words text-4xl font-extrabold leading-none"><CountUp to={resumo.ticket_medio} format={(v) => formatCurrency(v)} /></p>
-              <p className="mt-1 text-sm font-bold">Ticket Médio por Pedido</p>
-            </div>
-            <p className="mt-7 text-xs text-blue-200">Base: {resumo.total_pedidos} {resumo.total_pedidos === 1 ? "pedido registrado" : "pedidos registrados"}.</p>
-          </article>
-        </section>
+          </div>
+        ) : (
+          <div className="px-6.5 pb-6.5"><EmptyState texto="Cadastre preço de venda nos produtos para calcular o lucro." /></div>
+        )}
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import CurrencyInput from "@/src/components/CurrencyInput";
 import PricingModal from "./PricingModal";
@@ -30,6 +31,17 @@ type CenarioIA = {
 };
 
 // ─────────────────────────────────────────────────────────────────────
+
+const money = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function Step({ n }: { n: number }) {
+  return (
+    <span className="flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-[7px] bg-[#eef4ff] text-[11.5px] font-extrabold text-[#1a3673]">
+      {n}
+    </span>
+  );
+}
 
 export default function ProductForm({ productId }: { productId?: string }) {
   const router = useRouter();
@@ -292,226 +304,340 @@ export default function ProductForm({ productId }: { productId?: string }) {
     }
   }
 
-  if (loading) return <div className="p-8">Carregando produto…</div>;
+  if (loading) {
+    return (
+      <div className="max-w-290 px-8.5 pb-13 pt-7.5 text-sm text-[#64748b]">
+        Carregando produto…
+      </div>
+    );
+  }
+
+  const custoTotal = (Number(custo || 0) + Number(freteUnitario || 0)) || 0;
+  const totalUnidades = variantes.reduce((total, v) => total + Number(v.quantidade_estoque || 0), 0);
+
   return (
-    <div className="min-h-screen p-8 bg-[#bfdbfe]">
-      <h1 className="text-4xl font-bold text-slate-900 mb-8">
-        {productId ? "Editar Produto" : "Novo Produto"}
-      </h1>
-      <form
-        onSubmit={submit}
-        className="max-w-[1200px] bg-[#1E3A8A] rounded-[32px] p-8 text-white grid md:grid-cols-[1fr_380px] gap-8"
-      >
-        <section className="space-y-6">
-          <h2 className="text-2xl font-bold">Informações do Produto</h2>
-          {error && (
-            <p className="rounded-xl bg-red-500/20 p-3 text-red-100">{error}</p>
-          )}
-          <label className="block text-sm">
-            Nome do Produto
-            <input
-              required
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
-            />
-          </label>
-          <div className="grid sm:grid-cols-2 gap-6">
-            <label className="block text-sm">
-              Categoria
-              <select
+    <div className="max-w-290 px-8.5 pb-13 pt-7.5 mm-screen-in">
+      <div className="mb-5.5">
+        <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Cadastro</p>
+        <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">
+          {productId ? "Editar produto" : "Novo produto"}
+        </h1>
+        <p className="mt-1.5 text-sm text-[#64748b]">
+          O preço piso é calculado pelo sistema; a IA sugere cenários ao final.
+        </p>
+      </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={submit} className="grid items-start gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) 350px' }}>
+        <div className="flex flex-col gap-4">
+          <section className="rounded-2xl border border-[#e4eaf4] bg-white p-6.5">
+            <h2 className="mb-5 flex items-center gap-2.25 text-[16px] font-bold text-[#0f172a]">
+              <Step n={1} />
+              Informações do produto
+            </h2>
+            <label className="block text-[12.5px] font-bold text-[#475569]">
+              Nome do produto
+              <input
                 required
-                value={categoriaId}
-                onChange={(e) => setCategoriaId(e.target.value)}
-                className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
-              >
-                <option value="">Selecione</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.nome}
-                  </option>
-                ))}
-              </select>
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Ex: Camiseta Oversized Bege"
+                className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:bg-white focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+              />
             </label>
-            <button
-              type="button"
-              onClick={() => setCategoryModal(true)}
-              className="self-end rounded-xl border border-white/30 p-4 text-left hover:bg-white/10"
-            >
-              + Criar categoria
-            </button>
-            <label className="block text-sm">
-              Gênero
-              <select
-                value={genero}
-                onChange={(e) => setGenero(e.target.value)}
-                className="mt-2 w-full bg-[#0F172A] rounded-xl p-4"
+            <div className="mt-4.5 grid grid-cols-3 gap-3.5">
+              <label className="block text-[12.5px] font-bold text-[#475569]">
+                Categoria
+                <select
+                  required
+                  value={categoriaId}
+                  onChange={(e) => setCategoriaId(e.target.value)}
+                  className="mt-2 h-11 w-full cursor-pointer rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff]"
+                >
+                  <option value="">Selecione</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-[12.5px] font-bold text-[#475569]">
+                Gênero
+                <select
+                  value={genero}
+                  onChange={(e) => setGenero(e.target.value)}
+                  className="mt-2 h-11 w-full cursor-pointer rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff]"
+                >
+                  <option>Unissex</option>
+                  <option>Masculino</option>
+                  <option>Feminino</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => setCategoryModal(true)}
+                className="mm-hover flex h-11 items-center justify-center gap-1.75 self-end rounded-[11px] border border-dashed border-[#c9d7ee] text-[13px] font-bold text-[#0080ff] hover:border-[#0080ff] hover:bg-[#f5f9ff]"
               >
-                <option>Masculino</option>
-                <option>Feminino</option>
-                <option>Unissex</option>
-              </select>
-            </label>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-2xl font-bold">Definição da Grade</h2>
+                <Plus size={15} strokeWidth={2} />
+                Criar categoria
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#e4eaf4] bg-white p-6.5">
+            <div className="mb-4.5 flex items-center justify-between">
+              <h2 className="flex items-center gap-2.25 text-[16px] font-bold text-[#0f172a]">
+                <Step n={2} />
+                Definição da grade
+              </h2>
               <button
                 type="button"
                 onClick={() => setVariantModal(true)}
-                className="flex items-center gap-1 text-blue-300"
+                className="mm-hover flex h-9 items-center gap-1.75 rounded-[10px] bg-[#eef4ff] px-3.5 text-[13px] font-bold text-[#1a3673] hover:bg-[#1a3673] hover:text-white"
               >
-                <Plus size={18} /> Adicionar
+                <Plus size={15} strokeWidth={2} />
+                Adicionar variação
               </button>
             </div>
-            <div className="grid sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-2.75">
               {variantes.map((variant, index) => (
                 <div
                   key={`${variant.tamanho}-${index}`}
-                  className="rounded-xl bg-[#0F172A] p-4 relative"
+                  className="mm-pop-in relative rounded-xl border border-[#e9eff8] bg-[#f8fafd] p-3.5 transition-colors hover:border-[#bfdbfe]"
                 >
                   <button
                     type="button"
+                    aria-label="Remover variação"
                     onClick={() =>
                       setVariantes((items) =>
                         items.filter((_, itemIndex) => itemIndex !== index),
                       )
                     }
-                    className="absolute right-2 top-2 text-white/60 hover:text-red-400"
+                    className="mm-hover absolute right-1.75 top-1.75 flex h-5 w-5 items-center justify-center rounded-md text-[#a5b2c6] hover:bg-[#fef2f2] hover:text-red-600"
                   >
-                    <X size={16} />
+                    <X size={12} strokeWidth={2.2} />
                   </button>
-                  <p className="font-bold">
-                    {variant.tamanho} {variant.cor && `• ${variant.cor}`}
+                  <p className="pr-4 text-sm font-bold text-[#0f172a]">
+                    {variant.tamanho}{variant.cor ? ` · ${variant.cor}` : ""}
                   </p>
-                  <p className="text-sm text-white/70">
-                    {variant.quantidade_estoque} un.
-                  </p>
+                  <p className="mt-1 text-xs text-[#64748b]">{variant.quantidade_estoque} un.</p>
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={() => setVariantModal(true)}
+                className="mm-hover flex min-h-18.5 items-center justify-center rounded-xl border border-dashed border-[#cfdaec] text-[#94a3b8] hover:border-[#0080ff] hover:bg-[#f7fbff] hover:text-[#0080ff]"
+              >
+                <Plus size={19} strokeWidth={1.7} />
+              </button>
             </div>
-          </div>
-        </section>
-        <aside className="rounded-[28px] bg-[#172554] p-6 flex flex-col gap-6">
-          <h2 className="text-xl font-bold">Preço</h2>
-          <label className="text-sm">
-            Custo de Fábrica
-            <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
-              <span className="text-white/50">R$</span>
+            <p className="mt-4 text-[12.5px] text-[#8494ad]">
+              {variantes.length === 0
+                ? "Nenhuma variação adicionada ainda."
+                : `${variantes.length} ${variantes.length === 1 ? "variação" : "variações"} · ${totalUnidades} unidades no total`}
+            </p>
+          </section>
+        </div>
+
+        <aside className="sticky rounded-2xl border border-[#e4eaf4] bg-white p-6.5" style={{ top: 82 }}>
+          <h2 className="mb-5 flex items-center gap-2.25 text-[16px] font-bold text-[#0f172a]">
+            <Step n={3} />
+            Custos e preço
+          </h2>
+          <label className="block text-[12.5px] font-bold text-[#475569]">
+            Custo de fábrica
+            <div className="mm-hover mt-2 flex h-11 items-center gap-1.75 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 focus-within:border-[#0080ff]">
+              <span className="text-[13px] font-bold text-[#94a3b8]">R$</span>
               <CurrencyInput
                 required
                 value={custo}
                 onChange={setCusto}
-                className="w-full bg-transparent outline-none"
+                placeholder="0,00"
+                className="w-full flex-1 border-none bg-transparent text-[15px] font-bold text-[#0f172a] outline-none"
               />
             </div>
           </label>
-          <label className="text-sm">
-            Custo do frete unitário
-            <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
-              <span className="text-white/50">R$</span>
+          <label className="mt-4 block text-[12.5px] font-bold text-[#475569]">
+            Frete de entrada unitário
+            <div className="mm-hover mt-2 flex h-11 items-center gap-1.75 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 focus-within:border-[#0080ff]">
+              <span className="text-[13px] font-bold text-[#94a3b8]">R$</span>
               <CurrencyInput
                 required
                 value={freteUnitario}
                 onChange={setFreteUnitario}
-                className="w-full bg-transparent outline-none"
+                placeholder="0,00"
+                className="w-full flex-1 border-none bg-transparent text-[15px] font-bold text-[#0f172a] outline-none"
               />
             </div>
           </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={jaVendoNaLoja}
-              onChange={(e) => setJaVendoNaLoja(e.target.checked)}
-              className="size-4 rounded border-white/30 bg-[#0F172A]"
-            />
-            Já vendo este produto em minha loja
-          </label>
+
+          <div className="mt-5 rounded-[13px] border border-[#e2ebfa] bg-[#f5f8fe] px-4.5 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[12.5px] font-semibold text-[#475569]">Custo total unitário</span>
+              <span className="text-[15px] font-extrabold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{money(custoTotal)}</span>
+            </div>
+            <p className="mt-2.75 text-[11.5px] leading-relaxed text-[#8494ad]">
+              O preço piso é calculado pelo sistema a partir da configuração da loja (margem, impostos e taxas) assim que o produto é cadastrado.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={jaVendoNaLoja}
+            onClick={() => setJaVendoNaLoja((v) => !v)}
+            className="mt-4.5 flex items-center gap-2.5 text-left"
+          >
+            <span
+              className={`flex h-4.75 w-4.75 shrink-0 items-center justify-center rounded-md border-[1.5px] transition-colors ${
+                jaVendoNaLoja ? "border-[#1a3673] bg-[#1a3673]" : "border-[#cbd5e1] bg-white"
+              }`}
+            >
+              <Check size={12} strokeWidth={3} className={`text-white transition-opacity ${jaVendoNaLoja ? "opacity-100" : "opacity-0"}`} />
+            </span>
+            <span className="text-[13px] font-semibold text-[#334155]">Já vendo este produto na loja</span>
+          </button>
+
           {jaVendoNaLoja && (
-            <label className="text-sm">
+            <label className="mm-rise-in mt-4 block text-[12.5px] font-bold text-[#475569]">
               Preço atual
-              <div className="mt-2 flex items-center gap-1 w-full bg-[#0F172A] rounded-xl p-4">
-                <span className="text-white/50">R$</span>
+              <div className="mm-hover mt-2 flex h-11 items-center gap-1.75 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 focus-within:border-[#0080ff]">
+                <span className="text-[13px] font-bold text-[#94a3b8]">R$</span>
                 <CurrencyInput
                   value={preco}
                   onChange={setPreco}
-                  className="w-full bg-transparent outline-none"
+                  placeholder="0,00"
+                  className="w-full flex-1 border-none bg-transparent text-[15px] font-bold text-[#0f172a] outline-none"
                 />
               </div>
             </label>
           )}
+
           <button
+            type="submit"
             disabled={saving}
-            className="mt-auto bg-[#0080ff] disabled:opacity-60 rounded-xl py-4 font-bold"
+            className="mm-hover mt-5.5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0080ff] text-[14.5px] font-bold text-white shadow-[0_10px_22px_-12px_rgba(0,128,255,.95)] hover:-translate-y-px hover:bg-[#1a3673] active:translate-y-0 active:scale-[.985] disabled:opacity-60"
           >
             {saving
               ? "Salvando…"
               : productId
                 ? "Salvar alterações"
-                : "Cadastrar Produto"}
+                : "Cadastrar produto"}
           </button>
         </aside>
       </form>
-      {categoryModal && (
-        <Modal title="Nova Categoria" close={() => setCategoryModal(false)}>
-          <input
-            autoFocus
-            value={novaCategoria}
-            onChange={(e) => setNovaCategoria(e.target.value)}
-            placeholder="Ex: Camisetas"
-            className="w-full bg-[#0F172A] rounded-xl p-4"
+
+      {categoryModal && createPortal(
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={() => setCategoryModal(false)}
+            className="mm-fade absolute inset-0 bg-[rgba(15,23,42,.4)]"
           />
-          <button
-            type="button"
-            onClick={createCategory}
-            className="mt-4 w-full bg-[#2563EB] rounded-xl py-3 font-bold"
-          >
-            Salvar
-          </button>
-        </Modal>
-      )}
-      {variantModal && (
-        <Modal title="Nova Variação" close={() => setVariantModal(false)}>
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              value={novaVariante.tamanho}
-              onChange={(e) =>
-                setNovaVariante((v) => ({ ...v, tamanho: e.target.value }))
-              }
-              placeholder="Tamanho"
-              className="bg-[#0F172A] rounded-xl p-4"
-            />
-            <input
-              value={novaVariante.cor}
-              onChange={(e) =>
-                setNovaVariante((v) => ({ ...v, cor: e.target.value }))
-              }
-              placeholder="Cor"
-              className="bg-[#0F172A] rounded-xl p-4"
-            />
-            <input
-              type="number"
-              min="0"
-              value={novaVariante.quantidade_estoque}
-              onChange={(e) =>
-                setNovaVariante((v) => ({
-                  ...v,
-                  quantidade_estoque: Number(e.target.value),
-                }))
-              }
-              placeholder="Quantidade"
-              className="col-span-2 bg-[#0F172A] rounded-xl p-4"
-            />
+          <div className="mm-pop-in-centered absolute left-1/2 top-1/2 w-[calc(100%-32px)] max-w-100 -translate-x-1/2 -translate-y-1/2 rounded-[18px] bg-white p-6.5 shadow-[0_40px_80px_-30px_rgba(15,23,42,.5)]">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-[#0f172a]">Nova categoria</h2>
+              <button
+                type="button"
+                onClick={() => setCategoryModal(false)}
+                aria-label="Fechar"
+                className="mm-hover flex h-8 w-8 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#f1f5fb]"
+              >
+                <X size={17} strokeWidth={1.8} />
+              </button>
+            </div>
+            <label className="block text-[12.5px] font-bold text-[#475569]">
+              Nome da categoria
+              <input
+                autoFocus
+                value={novaCategoria}
+                onChange={(e) => setNovaCategoria(e.target.value)}
+                placeholder="Ex: Camisetas"
+                className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={createCategory}
+              className="mm-hover mt-5 w-full rounded-xl bg-[#1a3673] py-3 text-center text-sm font-bold text-white hover:bg-[#0080ff]"
+            >
+              Salvar categoria
+            </button>
           </div>
+        </div>,
+        document.body,
+      )}
+
+      {variantModal && createPortal(
+        <div className="fixed inset-0 z-50">
           <button
             type="button"
-            onClick={addVariant}
-            className="mt-4 w-full bg-[#2563EB] rounded-xl py-3 font-bold"
-          >
-            Adicionar
-          </button>
-        </Modal>
+            aria-label="Fechar"
+            onClick={() => setVariantModal(false)}
+            className="mm-fade absolute inset-0 bg-[rgba(15,23,42,.4)]"
+          />
+          <div className="mm-pop-in-centered absolute left-1/2 top-1/2 w-[calc(100%-32px)] max-w-105 -translate-x-1/2 -translate-y-1/2 rounded-[18px] bg-white p-6.5 shadow-[0_40px_80px_-30px_rgba(15,23,42,.5)]">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-[#0f172a]">Nova variação</h2>
+              <button
+                type="button"
+                onClick={() => setVariantModal(false)}
+                aria-label="Fechar"
+                className="mm-hover flex h-8 w-8 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#f1f5fb]"
+              >
+                <X size={17} strokeWidth={1.8} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-[12.5px] font-bold text-[#475569]">
+                Tamanho
+                <input
+                  value={novaVariante.tamanho}
+                  onChange={(e) => setNovaVariante((v) => ({ ...v, tamanho: e.target.value }))}
+                  placeholder="P, M, G, 38…"
+                  className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.25 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+                />
+              </label>
+              <label className="text-[12.5px] font-bold text-[#475569]">
+                Cor
+                <input
+                  value={novaVariante.cor}
+                  onChange={(e) => setNovaVariante((v) => ({ ...v, cor: e.target.value }))}
+                  placeholder="Bege"
+                  className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.25 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+                />
+              </label>
+              <label className="col-span-2 text-[12.5px] font-bold text-[#475569]">
+                Quantidade em estoque
+                <input
+                  type="number"
+                  min={0}
+                  value={novaVariante.quantidade_estoque}
+                  onChange={(e) => setNovaVariante((v) => ({ ...v, quantidade_estoque: Number(e.target.value) }))}
+                  placeholder="0"
+                  className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.25 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+                />
+              </label>
+            </div>
+            <button
+              type="button"
+              onClick={addVariant}
+              className="mm-hover mt-5 w-full rounded-xl bg-[#1a3673] py-3 text-center text-sm font-bold text-white hover:bg-[#0080ff]"
+            >
+              Adicionar à grade
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
+
       {priceModalOpen && (
         <PricingModal
           precoPiso={precoPisoExibido}
@@ -532,36 +658,6 @@ export default function ProductForm({ productId }: { productId?: string }) {
           close={() => setPriceModalOpen(false)}
         />
       )}
-    </div>
-  );
-}
-
-function Modal({
-  title,
-  close,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <button
-        type="button"
-        aria-label="Fechar"
-        className="absolute inset-0 bg-black/60"
-        onClick={close}
-      />
-      <div className="relative w-full max-w-md rounded-3xl bg-[#1E3A8A] p-6 text-white">
-        <div className="mb-5 flex justify-between">
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button type="button" onClick={close}>
-            <X />
-          </button>
-        </div>
-        {children}
-      </div>
     </div>
   );
 }

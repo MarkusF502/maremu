@@ -3,21 +3,38 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Flame, AlertCircle, DollarSign, Lightbulb } from "lucide-react";
+import { ArrowRight, Flame, AlertCircle, Lightbulb, Receipt } from "lucide-react";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useDashboard } from "@/src/hooks/useDashboard";
 import { CountUp } from "@/src/components/CountUp";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Legend
+  ResponsiveContainer,
 } from "recharts";
+
+type AuthUser = { name?: string } | null;
 
 function brl(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function dataDeHoje() {
+  const label = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+const RANK_COLORS = ['#1a3673', '#2563eb', '#6aa4f8'];
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const authUser = user as AuthUser;
   const { data, loading: dashLoading, error } = useDashboard();
   const router = useRouter();
 
@@ -27,27 +44,19 @@ export default function DashboardPage() {
 
   if (authLoading || !user || dashLoading) {
     return (
-      <div className="max-w-7xl mx-auto space-y-8 pb-8">
-        <div className="w-full bg-[#1a3673] rounded-2xl p-8 shadow-sm">
-          <div className="mm-skeleton h-7 w-56 mx-auto rounded-lg" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-8">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="bg-white/10 p-5 rounded-xl border border-white/5">
-                <div className="mm-skeleton h-3 w-32 rounded" style={{ animationDelay: `${i * 80}ms` }} />
-                <div className="mm-skeleton h-8 w-40 rounded mt-3" style={{ animationDelay: `${i * 80}ms` }} />
-              </div>
-            ))}
-          </div>
+      <div className="max-w-330 px-8.5 pb-13 pt-7.5">
+        <div className="mm-skeleton h-5.5 w-58 rounded-lg" />
+        <div className="mt-6.5 grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(212px, 1fr))' }}>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="mm-skeleton h-29.5 rounded-2xl" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="bg-white rounded-2xl p-8 shadow-sm lg:col-span-2">
-            <div className="mm-skeleton h-5 w-64 rounded" />
-            <div className="mm-skeleton h-64 w-full rounded-xl mt-6" style={{ animationDelay: '80ms' }} />
-          </div>
-          <div className="bg-white/60 rounded-2xl p-8 shadow-sm space-y-4">
-            <div className="mm-skeleton h-24 w-full rounded-xl" />
-            <div className="mm-skeleton h-24 w-full rounded-xl" style={{ animationDelay: '80ms' }} />
-            <div className="mm-skeleton h-24 w-full rounded-xl" style={{ animationDelay: '160ms' }} />
+        <div className="mt-4 grid gap-4" style={{ gridTemplateColumns: 'minmax(0,1.85fr) minmax(0,1fr)' }}>
+          <div className="mm-skeleton h-105 rounded-2xl" />
+          <div className="flex flex-col gap-4">
+            <div className="mm-skeleton h-32 rounded-2xl" />
+            <div className="mm-skeleton h-32 rounded-2xl" style={{ animationDelay: '80ms' }} />
+            <div className="mm-skeleton h-32 rounded-2xl" style={{ animationDelay: '160ms' }} />
           </div>
         </div>
       </div>
@@ -56,7 +65,7 @@ export default function DashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="flex h-screen items-center justify-center text-slate-500 mm-fade">
+      <div className="flex h-full items-center justify-center text-slate-500 mm-fade">
         {error || 'Erro ao carregar dados.'}
       </div>
     );
@@ -64,6 +73,37 @@ export default function DashboardPage() {
 
   const { resumo_dia, tendencia_7dias, top_produtos_semana,
           alertas_estoque, ultimas_transacoes } = data;
+
+  const ontem = tendencia_7dias.length >= 2 ? tendencia_7dias[tendencia_7dias.length - 2] : undefined;
+  const variacao = ontem && ontem.faturamento > 0
+    ? ((resumo_dia.faturamento - ontem.faturamento) / ontem.faturamento) * 100
+    : null;
+  const margem = resumo_dia.faturamento > 0
+    ? (resumo_dia.lucro_bruto / resumo_dia.faturamento) * 100
+    : null;
+
+  const kpis: {
+    label: string;
+    raw: number;
+    format: (v: number) => string;
+    suffix?: string;
+    valueColor: string;
+    sub?: string;
+    subColor?: string;
+  }[] = [
+    {
+      label: 'Faturamento do dia', raw: resumo_dia.faturamento, format: brl, valueColor: '#0f172a',
+      sub: variacao !== null ? `${variacao >= 0 ? '+' : ''}${variacao.toFixed(0)}% vs. ontem` : undefined,
+      subColor: variacao !== null && variacao >= 0 ? '#10b981' : '#dc2626',
+    },
+    {
+      label: 'Lucro estimado', raw: resumo_dia.lucro_bruto, format: brl, valueColor: '#047857',
+      sub: margem !== null ? `margem de ${margem.toFixed(1).replace('.', ',')}%` : undefined,
+      subColor: '#64748b',
+    },
+    { label: 'Ticket médio', raw: resumo_dia.ticket_medio, format: brl, valueColor: '#0f172a' },
+    { label: 'Peças vendidas', raw: resumo_dia.pecas_vendidas, format: (v) => `${Math.round(v)}`, suffix: 'unidades', valueColor: '#0f172a' },
+  ];
 
   // Insight automático baseado nos dados reais
   const melhorDia = [...tendencia_7dias].sort((a, b) => b.faturamento - a.faturamento)[0];
@@ -75,67 +115,83 @@ export default function DashboardPage() {
       }`
     : 'Nenhuma venda registrada ainda esta semana. Cadastre suas vendas na tela Ponto de Venda.';
 
+  const primeiroNome = authUser?.name?.split(' ')[0];
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-8 mm-screen-in">
+    <div className="max-w-330 px-8.5 pb-13 pt-7.5 mm-screen-in">
 
-      {/* Resumo do dia */}
-      <section className="w-full bg-[#1a3673] rounded-2xl p-8 text-white shadow-sm mm-rise-in" style={{ '--mm-i': 0 } as React.CSSProperties}>
-        <h2 className="text-2xl font-bold text-center mb-8">Resumo de Hoje</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mm-stagger">
-          {[
-            { label: 'Faturamento do Dia',    raw: resumo_dia.faturamento, format: brl },
-            { label: 'Lucro Estimado de Hoje',raw: resumo_dia.lucro_bruto, format: brl, green: true },
-            { label: 'Ticket Médio',           raw: resumo_dia.ticket_medio, format: brl },
-            { label: 'Peças Vendidas Hoje',
-              raw: resumo_dia.pecas_vendidas,
-              format: (v: number) => `${Math.round(v)}`,
-              suffix: 'unidades' },
-          ].map(({ label, raw, format, green, suffix }) => (
-            <div key={label} className="bg-white/10 p-5 rounded-xl border border-white/5 mm-rise-in">
-              <p className="text-blue-200 text-sm font-medium mb-2 uppercase tracking-wide">
-                {label}
-              </p>
-              <p className={`text-3xl font-bold ${green ? 'text-emerald-400' : ''}`}>
-                <CountUp to={raw} format={format} />
-                {suffix && (
-                  <span className="text-lg font-normal text-blue-200 ml-2 lowercase">
-                    {suffix}
-                  </span>
-                )}
-              </p>
-            </div>
-          ))}
+      <div className="mb-6 flex items-end justify-between gap-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Resumo de hoje</p>
+          <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">
+            {saudacao()}{primeiroNome ? `, ${primeiroNome}` : ''}
+          </h1>
+          <p className="mt-1.5 text-sm text-[#64748b]">{dataDeHoje()}</p>
         </div>
-      </section>
+        <button
+          type="button"
+          onClick={() => router.push('/relatorio')}
+          className="mm-hover flex h-10.5 shrink-0 items-center gap-2 rounded-[11px] bg-[#1a3673] px-5 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(26,54,115,0.75)] hover:-translate-y-px hover:bg-[#0080ff] active:translate-y-0 active:scale-[.985]"
+        >
+          Ver relatório da loja
+          <ArrowRight size={17} strokeWidth={1.7} />
+        </button>
+      </div>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 mm-stagger">
+      <div className="mm-stagger grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(212px, 1fr))' }}>
+        {kpis.map((kpi, i) => (
+          <div
+            key={kpi.label}
+            className="mm-rise-in mm-hover rounded-2xl border border-[#e4eaf4] bg-white p-5.5 hover:-translate-y-0.75 hover:border-[#cfe0f8] hover:shadow-[0_16px_30px_-22px_rgba(15,23,42,0.5)]"
+            style={{ '--mm-i': i } as React.CSSProperties}
+          >
+            <p className="text-[11.5px] font-bold uppercase tracking-[.07em] text-[#8494ad]">{kpi.label}</p>
+            <p
+              className="mt-3 whitespace-nowrap text-[clamp(21px,2vw,31px)] font-extrabold tracking-tight"
+              style={{ color: kpi.valueColor, fontVariantNumeric: 'tabular-nums' }}
+            >
+              <CountUp to={kpi.raw} format={kpi.format} />
+              {kpi.suffix && <span className="ml-1.5 text-[15px] font-semibold lowercase text-[#94a3b8]">{kpi.suffix}</span>}
+            </p>
+            {kpi.sub && <p className="mt-2 text-[12.5px] font-semibold" style={{ color: kpi.subColor }}>{kpi.sub}</p>}
+          </div>
+        ))}
+      </div>
 
-        {/* Coluna esquerda — gráfico real */}
-        <div className="bg-white rounded-2xl p-8 shadow-sm lg:col-span-2 flex flex-col mm-rise-in" style={{ '--mm-i': 1 } as React.CSSProperties}>
-          <h3 className="text-xl font-bold text-slate-800 mb-1">Tendência de Curto Prazo</h3>
-          <p className="text-slate-500 text-sm mb-6">
-            Faturamento e lucro nos últimos 7 dias.
-          </p>
+      <div className="mm-stagger mt-4 grid items-start gap-4" style={{ gridTemplateColumns: 'minmax(0,1.85fr) minmax(0,1fr)' }}>
 
-          <div className="h-64 mb-6">
+        {/* Tendência — gráfico real */}
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-6.5" style={{ '--mm-i': 1 } as React.CSSProperties}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-[17px] font-bold text-[#0f172a]">Tendência de curto prazo</h2>
+              <p className="mt-1 text-[13px] text-[#64748b]">Faturamento e lucro nos últimos 7 dias</p>
+            </div>
+            <div className="flex gap-3.5 text-xs font-semibold text-[#475569]">
+              <span className="flex items-center gap-1.5"><i className="block h-2.25 w-2.25 rounded-[3px] bg-[#2563eb]" />Faturamento</span>
+              <span className="flex items-center gap-1.5"><i className="block h-2.25 w-2.25 rounded-[3px] bg-[#10b981]" />Lucro</span>
+            </div>
+          </div>
+
+          <div className="mt-6 h-64">
             {tendencia_7dias.every(d => d.faturamento === 0) ? (
-              <div className="h-full flex items-center justify-center text-slate-400 text-sm bg-slate-50 rounded-xl">
+              <div className="flex h-full items-center justify-center rounded-xl bg-[#f8fafd] text-sm text-[#94a3b8]">
                 Nenhuma venda registrada nos últimos 7 dias.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tendencia_7dias} barSize={28}>
+                <BarChart data={tendencia_7dias} barSize={18} barGap={5}>
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 12, fill: '#94a3b8' }}
+                    tick={{ fontSize: 12, fill: '#94a3b8', fontWeight: 600 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    tick={{ fontSize: 11, fill: '#a3b0c4', fontWeight: 600 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={v => `R$${(v/1000).toFixed(0)}k`}
+                    tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
                     formatter={(value, name) => [
@@ -145,105 +201,118 @@ export default function DashboardPage() {
                     labelStyle={{ color: '#1e293b', fontWeight: 600 }}
                     contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
                   />
-                  <Legend
-                    formatter={name => name === 'faturamento' ? 'Faturamento' : 'Lucro'}
-                  />
-                  <Bar dataKey="faturamento" fill="#2563EB" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="lucro"       fill="#10b981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="faturamento" fill="#2563eb" radius={[5, 5, 0, 0]} />
+                  <Bar dataKey="lucro" fill="#10b981" radius={[5, 5, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          <div className="bg-[#1a3673] text-white p-5 rounded-xl mb-6 flex items-start gap-4">
-            <Lightbulb className="text-yellow-400 shrink-0 mt-0.5" size={24} />
-            <p className="text-sm leading-relaxed text-blue-50">
-              <strong className="text-white">Insight: </strong>
-              {insightTexto}
+          <div className="mt-6 flex items-start gap-3.5 rounded-[13px] border border-[#e2ebfa] bg-[#f5f8fe] px-4.75 py-4.25">
+            <Lightbulb size={19} className="mt-px shrink-0 text-[#0080ff]" strokeWidth={1.6} />
+            <p className="text-[13.5px] leading-relaxed text-[#334155]">
+              <strong className="text-[#1a3673]">Insight:</strong> {insightTexto}
             </p>
           </div>
-
-          <button
-            onClick={() => router.push('/relatorio')}
-            className="bg-[#0080ff] hover:bg-blue-600 mm-hover text-white px-6 py-3.5 rounded-xl font-semibold w-max shadow-sm"
-          >
-            Ver Relatório da Loja
-          </button>
         </div>
 
-        {/* Coluna direita — métricas secundárias */}
-        <div className="bg-[#6aa4f8] rounded-2xl p-8 shadow-sm text-white flex flex-col gap-8 mm-rise-in" style={{ '--mm-i': 2 } as React.CSSProperties}>
+        {/* Coluna direita */}
+        <div className="flex flex-col gap-4">
 
           {/* Top 3 */}
-          <div>
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-              <Flame size={22} className="text-orange-200" />
-              Top 3 da Semana
+          <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ '--mm-i': 2 } as React.CSSProperties}>
+            <h3 className="mb-3.5 flex items-center gap-2 text-[14.5px] font-bold text-[#0f172a]">
+              <Flame size={17} className="text-[#f59e0b]" strokeWidth={1.6} />
+              Top 3 da semana
             </h3>
             {top_produtos_semana.length === 0 ? (
-              <p className="text-sm bg-white/10 p-5 rounded-xl text-white/70">
-                Nenhuma venda registrada esta semana.
-              </p>
+              <p className="rounded-[11px] bg-[#f8fafd] p-3 text-sm text-[#64748b]">Nenhuma venda registrada esta semana.</p>
             ) : (
-              <ul className="space-y-3 text-sm bg-white/10 p-5 rounded-xl border border-white/20 mm-stagger">
-                {top_produtos_semana.map((p, i) => (
-                  <li key={i} style={{ '--mm-i': i } as React.CSSProperties} className="flex justify-between items-center mm-rise-in mm-hover rounded-lg">
-                    <span className="font-medium truncate pr-2">{p.nome}</span>
-                    <span className="bg-white/20 px-2 py-1 rounded text-xs font-bold shrink-0">
-                      {p.total_vendas} vendas
+              <div className="flex flex-col gap-2.25">
+                {top_produtos_semana.slice(0, 3).map((p, i) => (
+                  <div key={p.nome} className="mm-hover flex items-center gap-2.75 rounded-[11px] bg-[#f8fafd] px-3 py-2.5 hover:translate-x-0.75 hover:bg-[#f1f5fc]">
+                    <span
+                      className="flex h-5.25 w-5.25 shrink-0 items-center justify-center rounded-[7px] text-[11px] font-bold text-white"
+                      style={{ background: RANK_COLORS[i] ?? '#94a3b8' }}
+                    >
+                      {i + 1}
                     </span>
-                  </li>
+                    <span className="truncate text-[13.5px] font-semibold text-[#1e293b]">{p.nome}</span>
+                    <span className="ml-auto shrink-0 text-[11.5px] font-bold text-[#0080ff]">{p.total_vendas} vendas</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
-          {/* Alertas */}
-          <div>
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-              <AlertCircle size={22} className="text-red-200" />
-              Estoque Crítico
-            </h3>
+          {/* Estoque crítico */}
+          <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ '--mm-i': 3 } as React.CSSProperties}>
+            <div className="mb-3.5 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-[14.5px] font-bold text-[#0f172a]">
+                <AlertCircle size={17} className="text-[#dc2626]" strokeWidth={1.6} />
+                Estoque crítico
+              </h3>
+              {alertas_estoque.length > 0 && (
+                <span className="rounded-full bg-[#fef2f2] px-2.25 py-0.75 text-[11px] font-bold text-[#dc2626]">
+                  {alertas_estoque.length}
+                </span>
+              )}
+            </div>
             {alertas_estoque.length === 0 ? (
-              <p className="text-sm bg-green-500/20 p-5 rounded-xl text-white/80">
-                Todos os estoques estão acima do mínimo.
-              </p>
+              <p className="rounded-[11px] bg-[#eafaf1] p-3 text-sm text-[#047857]">Todos os estoques estão acima do mínimo.</p>
             ) : (
-              <ul className="space-y-2 mm-stagger">
-                {alertas_estoque.map((a, i) => (
-                  <li key={i} style={{ '--mm-i': i } as React.CSSProperties} className="bg-red-500/80 text-white p-3 rounded-xl text-sm mm-rise-in">
-                    <strong>{a.produto_nome}</strong> — Tam. {a.tamanho}:{' '}
-                    <strong>{a.quantidade_estoque} un.</strong>
-                  </li>
-                ))}
-              </ul>
+              <div className="flex flex-col gap-2">
+                {alertas_estoque.map((a, i) => {
+                  const critico = a.quantidade_estoque <= 2;
+                  return (
+                    <div
+                      key={`${a.produto_nome}-${a.tamanho}-${i}`}
+                      onClick={() => router.push('/produtos')}
+                      className={`mm-hover flex cursor-pointer items-center gap-2.5 rounded-[11px] border px-3 py-2.5 hover:translate-x-0.75 ${
+                        critico ? 'border-[#fbe3e3] bg-[#fef5f5] hover:bg-[#fdeaea]' : 'border-[#fbe9cf] bg-[#fff9f0] hover:bg-[#fdf2e0]'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className={`truncate text-[13px] font-bold ${critico ? 'text-[#9f1239]' : 'text-[#92400e]'}`}>{a.produto_nome}</p>
+                        <p className={`mt-0.5 text-[11.5px] ${critico ? 'text-[#b45c68]' : 'text-[#b07724]'}`}>Tam. {a.tamanho}</p>
+                      </div>
+                      <span className={`ml-auto shrink-0 text-xs font-extrabold ${critico ? 'text-[#dc2626]' : 'text-[#d97706]'}`}>
+                        {a.quantidade_estoque} un.
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 
           {/* Últimas transações */}
-          <div>
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
-              <DollarSign size={22} className="text-green-200" />
-              Últimas Transações
+          <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ '--mm-i': 4 } as React.CSSProperties}>
+            <h3 className="mb-3 flex items-center gap-2 text-[14.5px] font-bold text-[#0f172a]">
+              <Receipt size={17} className="text-[#0080ff]" strokeWidth={1.6} />
+              Últimas transações
             </h3>
             {ultimas_transacoes.length === 0 ? (
-              <p className="text-sm bg-white/10 p-5 rounded-xl text-white/70">
-                Nenhuma transação registrada.
-              </p>
+              <p className="rounded-[11px] bg-[#f8fafd] p-3 text-sm text-[#64748b]">Nenhuma transação registrada.</p>
             ) : (
-              <ul className="space-y-3 text-sm bg-white/10 p-5 rounded-xl border border-white/20 mm-stagger">
+              <div className="flex flex-col">
                 {ultimas_transacoes.map((t, i) => (
-                  <li key={i} style={{ '--mm-i': i } as React.CSSProperties} className="flex justify-between items-center mm-rise-in mm-hover rounded-lg">
-                    <span className="truncate pr-4 font-medium">{t.nome}</span>
-                    <span className="font-bold shrink-0">×{t.quantidade}</span>
-                  </li>
+                  <div
+                    key={`${t.nome}-${i}`}
+                    className={`flex items-center gap-2.5 py-2.5 ${i < ultimas_transacoes.length - 1 ? 'border-b border-[#f2f5fa]' : ''}`}
+                  >
+                    <span className="truncate text-[13px] font-semibold text-[#334155]">{t.nome}</span>
+                    <span className="ml-auto shrink-0 text-xs text-[#94a3b8]">×{t.quantidade}</span>
+                    <span className="shrink-0 text-[13px] font-bold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {brl(t.preco_unitario_vendido * t.quantidade)}
+                    </span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
-
         </div>
-      </section>
+      </div>
     </div>
   );
 }

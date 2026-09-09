@@ -8,7 +8,7 @@ import {
   Minus,
   Package,
   Plus,
-  ReceiptText,
+  Receipt,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -104,11 +104,8 @@ function formatCurrency(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
+function formatHora(value: string) {
+  return new Intl.DateTimeFormat("pt-BR", { timeStyle: "short" }).format(new Date(value));
 }
 
 function normalizeText(value: string) {
@@ -378,377 +375,362 @@ export default function PDVPage() {
 
   if (carregando) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-slate-700">
-        <Loader2 className="mr-3 animate-spin" size={28} />
-        Carregando produtos e saídas...
+      <div className="flex h-full items-center justify-center text-[#64748b]">
+        <Loader2 className="mr-3 animate-spin" size={26} />
+        Carregando produtos e saídas…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#bfdbfe] p-4 sm:p-6 lg:p-8">
-      <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Fluxo de Saídas</h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Venda registrada no banco e baixa automática do estoque.
-          </p>
-        </div>
+    <div className="max-w-360 px-8.5 pb-13 pt-7.5 mm-screen-in">
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="rounded-2xl bg-white/70 px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Vendas hoje</p>
-            <p className="text-xl font-bold text-[#102356]">{historico.resumo_hoje.quantidade_vendas}</p>
+      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Ponto de venda</p>
+          <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">Fluxo de saídas</h1>
+          <p className="mt-1.5 text-sm text-[#64748b]">Venda registrada no banco e baixa automática do estoque.</p>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="rounded-[13px] border border-[#e4eaf4] bg-white px-4 py-2.75">
+            <p className="text-[10.5px] font-bold uppercase tracking-[.08em] text-[#8494ad]">Vendas hoje</p>
+            <p className="mt-1.25 text-[19px] font-extrabold text-[#1a3673]" style={{ fontVariantNumeric: 'tabular-nums' }}>{historico.resumo_hoje.quantidade_vendas}</p>
           </div>
-          <div className="rounded-2xl bg-white/70 px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Faturamento hoje</p>
-            <p className="text-xl font-bold text-[#102356]">{formatCurrency(historico.resumo_hoje.faturamento)}</p>
+          <div className="rounded-[13px] border border-[#e4eaf4] bg-white px-4 py-2.75">
+            <p className="text-[10.5px] font-bold uppercase tracking-[.08em] text-[#8494ad]">Faturamento hoje</p>
+            <p className="mt-1.25 whitespace-nowrap text-[19px] font-extrabold text-[#1a3673]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(historico.resumo_hoje.faturamento)}</p>
           </div>
           <button
             type="button"
             onClick={() => void carregarDados(true)}
             disabled={atualizando}
-            className="flex h-12 items-center gap-2 rounded-xl bg-white px-4 font-semibold text-[#17387c] shadow-sm transition hover:bg-slate-50 disabled:opacity-60"
+            aria-label="Atualizar"
+            className="mm-hover flex h-11 w-11 items-center justify-center rounded-[13px] border border-[#e4eaf4] bg-white text-[#64748b] hover:border-[#0080ff] hover:text-[#0080ff] disabled:opacity-60"
           >
             <RefreshCw size={18} className={atualizando ? "animate-spin" : ""} />
-            Atualizar
           </button>
         </div>
       </div>
 
       {(erro || sucesso) && (
         <div
-          className={`mb-5 flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm font-medium ${
-            erro
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          className={`mb-4 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium ${
+            erro ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"
           }`}
         >
-          {erro ? <AlertCircle size={20} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={20} className="mt-0.5 shrink-0" />}
+          {erro ? <AlertCircle size={19} className="mt-0.5 shrink-0" /> : <CheckCircle2 size={19} className="mt-0.5 shrink-0" />}
           <span>{erro ?? sucesso}</span>
         </div>
       )}
 
-      <div className="grid max-w-[1500px] grid-cols-1 items-start gap-4 xl:grid-cols-12">
-        <section className="rounded-[30px] bg-[#1e3a8a] p-5 text-white shadow-xl sm:p-7 xl:col-span-8">
-          <div className="mb-5 flex items-center justify-between gap-3">
+      <div className="grid items-start gap-4" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(258px,0.62fr) minmax(320px,0.78fr)' }}>
+
+        {/* Adicionar produto */}
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold">Adicionar produto</h2>
-              <p className="mt-1 text-xs text-blue-100/70">Selecione um item real do estoque cadastrado.</p>
+              <h2 className="text-[16px] font-bold text-[#0f172a]">Adicionar produto</h2>
+              <p className="mt-1 text-[12.5px] text-[#64748b]">Selecione um item real do estoque cadastrado.</p>
             </div>
-            <span className="rounded-full bg-[#0f172a] px-3 py-1.5 text-xs font-semibold text-blue-100">
+            <span className="shrink-0 rounded-full bg-[#eef4ff] px-2.75 py-1.25 text-[11.5px] font-bold text-[#1a3673]">
               {produtos.length} produtos
             </span>
           </div>
 
-          <div className="relative mb-5">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/45" size={20} />
+          <div className="mm-hover mt-4 flex h-11 items-center gap-2.25 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 text-[#94a3b8] focus-within:border-[#0080ff]">
+            <Search size={16} strokeWidth={1.6} className="shrink-0" />
             <input
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
               placeholder="Buscar por nome, SKU ou categoria"
-              className="w-full rounded-xl bg-[#0f172a] py-4 pl-12 pr-4 text-white outline-none ring-blue-400 placeholder:text-white/35 focus:ring-2"
+              className="w-full flex-1 border-none bg-transparent text-sm font-medium text-[#0f172a] outline-none placeholder:text-[#94a3b8]"
             />
           </div>
 
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-            <div className="min-w-0">
-              <div className="mb-5 max-h-64 space-y-2 overflow-y-auto pr-1">
-                {produtosFiltrados.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/15 bg-[#0f172a]/60 p-8 text-center text-sm text-white/55">
-                    Nenhum produto encontrado.
+          <div className="mt-3.5 flex max-h-67 flex-col gap-2 overflow-y-auto pr-1">
+            {produtosFiltrados.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-[#e4eaf4] bg-[#f8fafd] p-6 text-center text-sm text-[#94a3b8]">
+                Nenhum produto encontrado.
+              </div>
+            ) : produtosFiltrados.map((produto) => {
+              const ativo = produto.id === produtoSelecionadoId;
+              return (
+                <button
+                  key={produto.id}
+                  type="button"
+                  onClick={() => setProdutoSelecionadoId(produto.id)}
+                  className={`mm-hover flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left ${
+                    ativo ? "border-[#0080ff] bg-[#f5faff]" : "border-[#eef2f8] bg-white hover:border-[#dbe6f7] hover:bg-[#f8fbff]"
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[13.5px] font-semibold text-[#0f172a]">{produto.nome}</p>
+                    <p className="mt-0.5 truncate text-[11.5px] text-[#94a3b8]">
+                      {produto.categoria}{produto.sku ? ` • SKU ${produto.sku}` : ""}
+                    </p>
                   </div>
-                ) : produtosFiltrados.map((produto) => {
-                  const ativo = produto.id === produtoSelecionadoId;
-                  return (
-                    <button
-                      key={produto.id}
-                      type="button"
-                      onClick={() => setProdutoSelecionadoId(produto.id)}
-                      className={`flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition ${
-                        ativo
-                          ? "border-blue-300 bg-blue-500/25"
-                          : "border-white/5 bg-[#0f172a]/80 hover:border-white/15 hover:bg-[#0f172a]"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">{produto.nome}</p>
-                        <p className="mt-1 truncate text-xs text-white/45">
-                          {produto.categoria}{produto.sku ? ` • SKU ${produto.sku}` : ""}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="font-bold text-blue-200">{formatCurrency(produto.preco_venda_atual)}</p>
-                        <p className={`mt-1 text-xs ${produto.estoque_total > 0 ? "text-emerald-300" : "text-red-300"}`}>
-                          {produto.estoque_total} un.
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <h3 className="mb-3 font-bold text-white/90">Variação selecionada</h3>
-              <div className="flex min-h-24 flex-wrap gap-3">
-                {produtoSelecionado?.variantes.map((variante) => {
-                  const ativo = variante.id === varianteSelecionadaId;
-                  const quantidadeCarrinho = quantidadeNoCarrinho(variante.id);
-                  const disponivel = variante.quantidade_estoque - quantidadeCarrinho;
-                  const esgotada = disponivel <= 0;
-
-                  return (
-                    <button
-                      key={variante.id}
-                      type="button"
-                      onClick={() => setVarianteSelecionadaId(variante.id)}
-                      className={`relative min-w-28 rounded-xl border px-4 py-3 text-left transition ${
-                        ativo
-                          ? "border-blue-300 bg-blue-500/25"
-                          : "border-white/5 bg-[#0f172a] hover:border-white/15"
-                      } ${esgotada ? "opacity-55" : ""}`}
-                    >
-                      <p className="text-sm font-bold">Tam. {variante.tamanho}</p>
-                      <p className={`mt-1 text-xs ${esgotada ? "text-red-300" : "text-emerald-300"}`}>
-                        {esgotada ? "Sem saldo" : `${disponivel} disponível(is)`}
-                      </p>
-                      {quantidadeCarrinho > 0 && (
-                        <span className="absolute -right-2 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-400 px-1 text-[11px] font-bold text-white">
-                          {quantidadeCarrinho}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {produtoSelecionado && produtoSelecionado.variantes.length === 0 && (
-                  <p className="text-sm text-white/50">Este produto não possui variações cadastradas.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex min-h-[360px] flex-col rounded-[24px] border border-white/5 bg-[#0f172a] p-6 shadow-lg">
-              <div className="mb-5 flex h-36 items-center justify-center rounded-xl bg-white/5">
-                <Package className="text-white/20" size={58} />
-              </div>
-
-              {produtoSelecionado ? (
-                <>
-                  <span className="mb-2 w-fit rounded-full bg-blue-500/15 px-2.5 py-1 text-[11px] font-semibold text-blue-200">
-                    {produtoSelecionado.categoria}
-                  </span>
-                  <h3 className="text-lg font-bold leading-tight">{produtoSelecionado.nome}</h3>
-                  <p className="mt-2 text-2xl font-bold text-blue-300">
-                    {formatCurrency(produtoSelecionado.preco_venda_atual)}
-                  </p>
-                  <div className="mt-4 rounded-xl bg-white/5 px-3 py-2 text-sm text-white/65">
-                    {varianteSelecionada
-                      ? `Tamanho ${varianteSelecionada.tamanho} • ${varianteSelecionada.quantidade_estoque} em estoque`
-                      : "Selecione uma variação"}
+                  <div className="ml-auto shrink-0 text-right">
+                    <p className="text-[13.5px] font-bold text-[#1a3673]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(produto.preco_venda_atual)}</p>
+                    <p className={`mt-0.5 text-[11.5px] font-semibold ${produto.estoque_total > 0 ? "text-[#047857]" : "text-red-600"}`}>
+                      {produto.estoque_total} un.
+                    </p>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={adicionarAoCarrinho}
-                    disabled={!varianteSelecionada || varianteSelecionada.quantidade_estoque <= quantidadeNoCarrinho(varianteSelecionada.id)}
-                    className="mt-auto flex w-full items-center justify-center gap-2 rounded-xl bg-[#0080ff] py-4 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:opacity-70"
-                  >
-                    <Plus size={20} />
-                    Adicionar produto
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-1 items-center justify-center text-center text-sm text-white/45">
-                  Selecione um produto para visualizar suas variações.
-                </div>
-              )}
-            </div>
+                </button>
+              );
+            })}
           </div>
-        </section>
 
-        <section className="flex min-h-[650px] flex-col rounded-[30px] bg-[#0f172a] p-5 text-white shadow-2xl sm:p-7 xl:col-span-4">
-          <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
-            <div className="flex items-center gap-3">
-              <ShoppingCart size={22} />
-              <h2 className="text-xl font-bold">Carrinho</h2>
-            </div>
-            <span className="rounded-full bg-indigo-500/20 px-3 py-1 text-sm font-bold text-indigo-200">
-              {quantidadeItens} {quantidadeItens === 1 ? "item" : "itens"}
+          <h3 className="mb-2.75 mt-5 text-[12.5px] font-bold uppercase tracking-wider text-[#8494ad]">Variação selecionada</h3>
+          <div className="flex min-h-18 flex-wrap gap-2.5">
+            {produtoSelecionado?.variantes.map((variante) => {
+              const ativo = variante.id === varianteSelecionadaId;
+              const quantidadeCarrinho = quantidadeNoCarrinho(variante.id);
+              const disponivel = variante.quantidade_estoque - quantidadeCarrinho;
+              const esgotada = disponivel <= 0;
+
+              return (
+                <button
+                  key={variante.id}
+                  type="button"
+                  onClick={() => setVarianteSelecionadaId(variante.id)}
+                  className={`mm-hover relative min-w-28 rounded-xl border px-3.5 py-2.75 text-left ${
+                    ativo ? "border-[#0080ff] bg-[#f5faff]" : "border-[#eef2f8] bg-white hover:border-[#dbe6f7]"
+                  } ${esgotada ? "opacity-55" : ""}`}
+                >
+                  <p className="text-[13px] font-bold text-[#0f172a]">Tam. {variante.tamanho}</p>
+                  <p className={`mt-0.75 text-[11.5px] font-semibold ${esgotada ? "text-red-600" : "text-[#047857]"}`}>
+                    {esgotada ? "Sem saldo" : `${disponivel} disponível(is)`}
+                  </p>
+                  {quantidadeCarrinho > 0 && (
+                    <span className="mm-pop-in absolute -right-2 -top-2 flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-[#0080ff] px-1.5 text-[11px] font-extrabold text-white">
+                      {quantidadeCarrinho}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {produtoSelecionado && produtoSelecionado.variantes.length === 0 && (
+              <p className="text-sm text-[#94a3b8]">Este produto não possui variações cadastradas.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Preview do produto selecionado */}
+        <div className="mm-rise-in rounded-2xl border border-[#e4eaf4] bg-white p-5.5">
+          <div className="flex h-33 items-center justify-center rounded-[13px] border border-dashed border-[#dbe6f7] bg-[#f5f8fe] text-[#b7c8e0]">
+            <Package size={44} strokeWidth={1.2} />
+          </div>
+
+          {produtoSelecionado ? (
+            <>
+              <span className="mt-4 inline-block rounded-full bg-[#eef4ff] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#1a3673]">
+                {produtoSelecionado.categoria}
+              </span>
+              <h3 className="mt-2.75 text-[16px] font-bold leading-tight text-[#0f172a]">{produtoSelecionado.nome}</h3>
+              <p className="mt-2.25 text-2xl font-extrabold tracking-tight text-[#0080ff]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {formatCurrency(produtoSelecionado.preco_venda_atual)}
+              </p>
+              <p className="mt-3.5 rounded-[11px] bg-[#f8fafd] px-3.25 py-2.75 text-[12.5px] text-[#475569]">
+                {varianteSelecionada
+                  ? `Tamanho ${varianteSelecionada.tamanho} • ${varianteSelecionada.quantidade_estoque} em estoque`
+                  : "Selecione uma variação"}
+              </p>
+              <button
+                type="button"
+                onClick={adicionarAoCarrinho}
+                disabled={!varianteSelecionada || varianteSelecionada.quantidade_estoque <= quantidadeNoCarrinho(varianteSelecionada.id)}
+                className="mm-hover mt-4.5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#1a3673] text-[14.5px] font-bold text-white hover:-translate-y-px hover:bg-[#0080ff] active:translate-y-0 active:scale-[.985] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+              >
+                <Plus size={17} strokeWidth={2} />
+                Adicionar ao carrinho
+              </button>
+            </>
+          ) : (
+            <p className="mt-6 text-center text-sm text-[#94a3b8]">Selecione um produto para visualizar suas variações.</p>
+          )}
+        </div>
+
+        {/* Carrinho */}
+        <div className="mm-rise-in sticky rounded-2xl border border-[#e4eaf4] bg-white p-5.5" style={{ top: 82 }}>
+          <div className="flex items-center justify-between border-b border-[#eef2f8] pb-3.5">
+            <h2 className="flex items-center gap-2.25 text-[16px] font-bold text-[#0f172a]">
+              <ShoppingCart size={18} strokeWidth={1.6} className="text-[#1a3673]" />
+              Carrinho
+            </h2>
+            <span className="rounded-full bg-[#eef4ff] px-2.75 py-1.25 text-[11.5px] font-bold text-[#1a3673]">
+              {quantidadeItens}
             </span>
           </div>
 
-          <div className="max-h-[330px] flex-1 space-y-3 overflow-y-auto pr-1">
-            {carrinho.length === 0 ? (
-              <div className="flex h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 text-center text-white/35">
-                <ShoppingCart size={36} className="mb-3" />
-                <p className="text-sm">O carrinho está vazio.</p>
-              </div>
-            ) : carrinho.map((item) => (
-              <div key={item.variante_id} className="rounded-2xl border border-white/5 bg-white/[0.035] p-3.5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-white/90">{item.nome}</p>
-                    <p className="mt-1 text-xs text-white/45">Tamanho {item.tamanho}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removerItem(item.variante_id)}
-                    className="rounded-lg p-1.5 text-white/35 transition hover:bg-red-500/15 hover:text-red-300"
-                    aria-label={`Remover ${item.nome}`}
-                  >
-                    <Trash2 size={17} />
-                  </button>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center rounded-lg bg-[#091122]">
-                    <button
-                      type="button"
-                      onClick={() => alterarQuantidade(item.variante_id, -1)}
-                      className="p-2 text-white/60 hover:text-white"
-                      aria-label="Diminuir quantidade"
-                    >
-                      <Minus size={15} />
-                    </button>
-                    <span className="min-w-8 text-center text-sm font-bold">{item.quantidade}</span>
-                    <button
-                      type="button"
-                      onClick={() => alterarQuantidade(item.variante_id, 1)}
-                      disabled={item.quantidade >= item.estoque_disponivel}
-                      className="p-2 text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-25"
-                      aria-label="Aumentar quantidade"
-                    >
-                      <Plus size={15} />
-                    </button>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-white/40">{formatCurrency(item.preco)} cada</p>
-                    <p className="font-bold text-white/90">{formatCurrency(item.preco * item.quantidade)}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 space-y-3 border-t border-white/10 pt-5">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs font-semibold text-white/55">
-                Canal da venda
-                <select
-                  value={canalVenda}
-                  onChange={(event) => setCanalVenda(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/5 bg-[#091122] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400"
-                >
-                  {CANAIS.map((canal) => <option key={canal.value} value={canal.value}>{canal.label}</option>)}
-                </select>
-              </label>
-
-              <label className="text-xs font-semibold text-white/55">
-                Pagamento
-                <select
-                  value={formaPagamento}
-                  onChange={(event) => setFormaPagamento(event.target.value)}
-                  className="mt-1.5 w-full rounded-xl border border-white/5 bg-[#091122] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-400"
-                >
-                  {FORMAS_PAGAMENTO.map((forma) => <option key={forma} value={forma}>{forma}</option>)}
-                </select>
-              </label>
+          {carrinho.length === 0 ? (
+            <div className="mt-3.5 flex h-39.5 flex-col items-center justify-center gap-2.5 rounded-[13px] border border-dashed border-[#dbe4f2] text-[#a9b6ca]">
+              <ShoppingCart size={30} strokeWidth={1.3} />
+              <p className="text-[13px]">O carrinho está vazio.</p>
             </div>
+          ) : (
+            <div className="mt-3.5 flex max-h-61.5 flex-col gap-2.25 overflow-y-auto pr-1">
+              {carrinho.map((item) => (
+                <div key={item.variante_id} className="mm-pop-in rounded-xl border border-[#eef2f8] bg-[#f8fafd] p-3.25">
+                  <div className="flex items-start gap-2.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold text-[#0f172a]">{item.nome}</p>
+                      <p className="mt-0.75 text-[11.5px] text-[#94a3b8]">{item.tamanho}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removerItem(item.variante_id)}
+                      aria-label={`Remover ${item.nome}`}
+                      className="mm-hover ml-auto flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-md text-[#a5b2c6] hover:bg-[#fef2f2] hover:text-red-600"
+                    >
+                      <Trash2 size={14} strokeWidth={1.7} />
+                    </button>
+                  </div>
+                  <div className="mt-2.75 flex items-center justify-between gap-2.5">
+                    <div className="flex items-center rounded-[10px] border border-[#e4eaf4] bg-white">
+                      <button
+                        type="button"
+                        onClick={() => alterarQuantidade(item.variante_id, -1)}
+                        aria-label="Diminuir quantidade"
+                        className="mm-hover flex h-7.5 w-7.5 items-center justify-center rounded-[9px] text-[#475569] hover:bg-[#f1f5fb]"
+                      >
+                        <Minus size={14} strokeWidth={2} />
+                      </button>
+                      <span className="min-w-6.5 text-center text-[13px] font-extrabold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{item.quantidade}</span>
+                      <button
+                        type="button"
+                        onClick={() => alterarQuantidade(item.variante_id, 1)}
+                        disabled={item.quantidade >= item.estoque_disponivel}
+                        aria-label="Aumentar quantidade"
+                        className="mm-hover flex h-7.5 w-7.5 items-center justify-center rounded-[9px] text-[#475569] hover:bg-[#f1f5fb] disabled:opacity-30"
+                      >
+                        <Plus size={14} strokeWidth={2} />
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-[#94a3b8]">{formatCurrency(item.preco)}</p>
+                      <p className="mt-0.5 text-[13.5px] font-extrabold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(item.preco * item.quantidade)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-            <label className="block text-xs font-semibold text-white/55">
-              Desconto total
-              <div className="mt-1.5 flex items-center rounded-xl border border-white/5 bg-[#091122] px-3 focus-within:border-blue-400">
-                <span className="text-sm text-white/40">R$</span>
-                <CurrencyInput
-                  max={subtotal}
-                  value={desconto}
-                  onChange={setDesconto}
-                  className="w-full bg-transparent px-2 py-2.5 text-sm text-white outline-none"
-                />
-              </div>
+          <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-[#eef2f8] pt-4">
+            <label className="text-[11.5px] font-bold text-[#8494ad]">
+              Canal da venda
+              <select
+                value={canalVenda}
+                onChange={(event) => setCanalVenda(event.target.value)}
+                className="mt-1.75 h-10 w-full cursor-pointer rounded-[10px] border border-[#e0e7f3] bg-[#fbfcfe] px-2.5 text-[13px] font-semibold text-[#0f172a] outline-none"
+              >
+                {CANAIS.map((canal) => <option key={canal.value} value={canal.value}>{canal.label}</option>)}
+              </select>
             </label>
-
-            <div className="space-y-2 pt-1 text-sm">
-              <div className="flex justify-between text-white/60">
-                <span>Subtotal</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-red-300">
-                <span>Desconto</span>
-                <span>- {formatCurrency(descontoAplicado)}</span>
-              </div>
-              <div className="flex items-end justify-between border-t border-white/10 pt-3">
-                <span className="font-bold tracking-wide">TOTAL</span>
-                <span className="text-3xl font-bold">{formatCurrency(total)}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void finalizarVenda()}
-              disabled={carrinho.length === 0 || finalizando}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-4 text-lg font-bold tracking-wide text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:shadow-none"
-            >
-              {finalizando ? <Loader2 size={21} className="animate-spin" /> : <CheckCircle2 size={21} />}
-              {finalizando ? "FINALIZANDO..." : "FINALIZAR VENDA (F2)"}
-            </button>
+            <label className="text-[11.5px] font-bold text-[#8494ad]">
+              Pagamento
+              <select
+                value={formaPagamento}
+                onChange={(event) => setFormaPagamento(event.target.value)}
+                className="mt-1.75 h-10 w-full cursor-pointer rounded-[10px] border border-[#e0e7f3] bg-[#fbfcfe] px-2.5 text-[13px] font-semibold text-[#0f172a] outline-none"
+              >
+                {FORMAS_PAGAMENTO.map((forma) => <option key={forma} value={forma}>{forma}</option>)}
+              </select>
+            </label>
           </div>
-        </section>
+
+          <label className="mt-3 block text-[11.5px] font-bold text-[#8494ad]">
+            Desconto total
+            <div className="mm-hover mt-1.75 flex h-10 items-center gap-1.75 rounded-[10px] border border-[#e0e7f3] bg-[#fbfcfe] px-3 focus-within:border-[#0080ff]">
+              <span className="text-[12.5px] font-bold text-[#94a3b8]">R$</span>
+              <CurrencyInput
+                max={subtotal}
+                value={desconto}
+                onChange={setDesconto}
+                className="w-full flex-1 border-none bg-transparent text-sm font-bold text-[#0f172a] outline-none"
+              />
+            </div>
+          </label>
+
+          <div className="mt-4 flex flex-col gap-2 text-[13px]">
+            <div className="flex justify-between text-[#64748b]">
+              <span>Subtotal</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-red-600">
+              <span>Desconto</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>- {formatCurrency(descontoAplicado)}</span>
+            </div>
+            <div className="flex items-end justify-between border-t border-[#eef2f8] pt-2.75">
+              <span className="text-xs font-extrabold tracking-wider text-[#334155]">TOTAL</span>
+              <span className="text-[26px] font-extrabold tracking-tight text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(total)}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void finalizarVenda()}
+            disabled={carrinho.length === 0 || finalizando}
+            className="mm-hover mt-4 flex h-13 w-full items-center justify-center gap-2.25 rounded-xl bg-[#1a3673] text-[14.5px] font-extrabold tracking-[.03em] text-white hover:-translate-y-px hover:bg-[#0080ff] active:translate-y-0 active:scale-[.985] disabled:cursor-not-allowed disabled:bg-[#cbd5e1] disabled:hover:translate-y-0"
+          >
+            {finalizando ? <Loader2 size={19} className="animate-spin" /> : <CheckCircle2 size={19} />}
+            {finalizando ? "FINALIZANDO…" : "FINALIZAR VENDA (F2)"}
+          </button>
+        </div>
       </div>
 
-      <section className="mt-5 max-w-[1500px] rounded-[28px] bg-[#102356] p-5 text-white shadow-xl sm:p-7">
-        <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3">
-            <ReceiptText className="text-blue-300" size={24} />
+      <div className="mm-rise-in mt-4 overflow-hidden rounded-2xl border border-[#e4eaf4] bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6.5 py-5 pb-3.5">
+          <div className="flex items-center gap-2.75">
+            <Receipt size={20} strokeWidth={1.6} className="text-[#0080ff]" />
             <div>
-              <h2 className="text-xl font-bold">Saídas recentes</h2>
-              <p className="mt-1 text-xs text-white/45">Últimas vendas salvas em pedidos e itens_pedido.</p>
+              <h2 className="text-[16px] font-bold text-[#0f172a]">Saídas recentes</h2>
+              <p className="mt-0.75 text-[12.5px] text-[#64748b]">Últimas vendas salvas em pedidos e itens_pedido.</p>
             </div>
           </div>
-          <span className="text-xs text-white/40">Exibindo até 10 registros</span>
+          <span className="text-xs text-[#94a3b8]">Exibindo até 10 registros</span>
         </div>
 
         {historico.pedidos.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-white/45">
-            Nenhuma saída registrada até o momento.
+          <div className="px-6.5 pb-6.5">
+            <div className="rounded-xl border border-dashed border-[#e4eaf4] bg-[#f8fafd] py-10 text-center text-sm text-[#8494ad]">
+              Nenhuma saída registrada até o momento.
+            </div>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-white/5">
-            <table className="w-full min-w-[850px] text-left text-sm">
-              <thead className="bg-[#0b183b] text-xs uppercase tracking-wide text-white/45">
-                <tr>
-                  <th className="px-4 py-3">Venda</th>
-                  <th className="px-4 py-3">Data</th>
-                  <th className="px-4 py-3">Itens</th>
-                  <th className="px-4 py-3">Canal</th>
-                  <th className="px-4 py-3">Pagamento</th>
-                  <th className="px-4 py-3 text-right">Desconto</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historico.pedidos.map((pedido) => (
-                  <tr key={pedido.id} className="border-t border-white/5 bg-[#0f1d43] transition hover:bg-[#142650]">
-                    <td className="px-4 py-4 font-mono text-xs font-bold text-blue-300">#{shortOrderId(pedido.id)}</td>
-                    <td className="px-4 py-4 text-white/70">{formatDate(pedido.data_venda)}</td>
-                    <td className="px-4 py-4">
-                      <p className="font-semibold text-white/85">{pedido.quantidade_itens} un.</p>
-                      <p className="mt-1 max-w-[260px] truncate text-xs text-white/40">
-                        {pedido.itens.map((item) => `${item.produto} (${item.tamanho ?? "-"})`).join(", ")}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4 text-white/70">
-                      {CANAIS.find((canal) => canal.value === pedido.canal_venda)?.label ?? pedido.canal_venda}
-                    </td>
-                    <td className="px-4 py-4 text-white/70">{pedido.forma_pagamento ?? "—"}</td>
-                    <td className="px-4 py-4 text-right text-red-300">{formatCurrency(pedido.desconto)}</td>
-                    <td className="px-4 py-4 text-right font-bold text-emerald-300">{formatCurrency(pedido.valor_total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="overflow-x-auto">
+            <div className="min-w-215">
+              <div
+                className="grid gap-3 border-y border-[#eef2f8] bg-[#fafbfe] px-6.5 py-2.75 text-[11px] font-bold uppercase tracking-wider text-[#8494ad]"
+                style={{ gridTemplateColumns: '98px 74px minmax(0,1.7fr) 1.05fr 1.15fr 0.8fr 0.85fr' }}
+              >
+                <span>Venda</span><span>Hora</span><span>Itens</span><span>Canal</span><span>Pagamento</span>
+                <span className="text-right">Desconto</span><span className="text-right">Total</span>
+              </div>
+              {historico.pedidos.map((pedido) => (
+                <div
+                  key={pedido.id}
+                  className="mm-hover grid items-center gap-3 border-b border-[#f4f7fb] px-6.5 py-3.25 text-[13px] text-[#475569] last:border-b-0 hover:bg-[#f8fbff]"
+                  style={{ gridTemplateColumns: '98px 74px minmax(0,1.7fr) 1.05fr 1.15fr 0.8fr 0.85fr' }}
+                >
+                  <span className="font-mono text-[11.5px] font-bold text-[#0080ff]">#{shortOrderId(pedido.id)}</span>
+                  <span>{formatHora(pedido.data_venda)}</span>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-[#0f172a]">{pedido.quantidade_itens} un.</p>
+                    <p className="mt-0.5 truncate text-[11.5px] text-[#94a3b8]">
+                      {pedido.itens.map((item) => `${item.produto} (${item.tamanho ?? "-"})`).join(", ")}
+                    </p>
+                  </div>
+                  <span className="truncate">{CANAIS.find((canal) => canal.value === pedido.canal_venda)?.label ?? pedido.canal_venda}</span>
+                  <span className="truncate">{pedido.forma_pagamento ?? "—"}</span>
+                  <span className="text-right text-red-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(pedido.desconto)}</span>
+                  <span className="text-right font-bold text-[#047857]" style={{ fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(pedido.valor_total)}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

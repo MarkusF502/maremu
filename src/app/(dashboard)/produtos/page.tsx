@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
@@ -19,17 +20,15 @@ type Produto = {
   id: string;
   nome: string;
   categoria?: { nome: string };
-  genero?: "masculino" | "feminino" | "unisex" | null;
   custo_aquisicao: string;
   preco_venda_atual?: string | null;
-  variantes: { quantidade_estoque: number; estoque_minimo_alerta: number }[];
+  variantes: { tamanho: string; quantidade_estoque: number; estoque_minimo_alerta: number }[];
 };
 type Categoria = { id: string; nome: string };
 type Filtros = {
   nome: string;
   categoriaId: string;
   status: string;
-  genero: string;
   precoMin: string;
   precoMax: string;
 };
@@ -40,9 +39,21 @@ const filtrosIniciais: Filtros = {
   nome: "",
   categoriaId: "",
   status: "",
-  genero: "",
   precoMin: "",
   precoMax: "",
+};
+
+const STATUS_PILLS: { value: string; label: string }[] = [
+  { value: "", label: "Todos" },
+  { value: "em_estoque", label: "Em estoque" },
+  { value: "estoque_baixo", label: "Baixo" },
+  { value: "critico", label: "Crítico" },
+];
+
+const STATUS_ESTILO: Record<string, { bg: string; fg: string }> = {
+  "Em estoque": { bg: "#eafaf1", fg: "#047857" },
+  "Estoque baixo": { bg: "#fff7ea", fg: "#b45309" },
+  "Crítico": { bg: "#fdeeee", fg: "#b91c1c" },
 };
 
 const money = new Intl.NumberFormat("pt-BR", {
@@ -54,12 +65,24 @@ function contarFiltrosAtivos(filtros: Filtros) {
   return Object.values(filtros).filter((value) => value !== "").length;
 }
 
+function sigla(nome: string) {
+  const palavras = nome.trim().split(/\s+/).filter(Boolean);
+  if (palavras.length === 0) return "—";
+  if (palavras.length === 1) return palavras[0].slice(0, 2).toUpperCase();
+  return (palavras[0][0] + palavras[1][0]).toUpperCase();
+}
+
+function grade(product: Produto) {
+  const tamanhos = [...new Set(product.variantes.map((v) => v.tamanho).filter(Boolean))];
+  return tamanhos.length > 0 ? tamanhos.join(" · ") : "—";
+}
+
 export default function ProdutosPage() {
   const [products, setProducts] = useState<Produto[]>([]);
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [filters, setFilters] = useState<Filtros>(filtrosIniciais);
   const [draftFilters, setDraftFilters] = useState<Filtros>(filtrosIniciais);
-  const [isFilterModalOpen, setFilterModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [sort, setSort] = useState<Sort>({ column: "nome", direction: "asc" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,7 +96,6 @@ export default function ProdutosPage() {
       if (filtersToApply.categoriaId)
         params.set("categoria_id", filtersToApply.categoriaId);
       if (filtersToApply.status) params.set("status", filtersToApply.status);
-      if (filtersToApply.genero) params.set("genero", filtersToApply.genero);
       if (filtersToApply.precoMin !== "")
         params.set("preco_min", filtersToApply.precoMin);
       if (filtersToApply.precoMax !== "")
@@ -126,36 +148,36 @@ export default function ProdutosPage() {
     void loadInitialData();
   }, []);
 
-  // Fecha o modal com a tecla Esc
+  // Fecha a gaveta de filtros com a tecla Esc
   useEffect(() => {
-    if (!isFilterModalOpen) return;
+    if (!drawerOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setFilterModalOpen(false);
+      if (event.key === "Escape") setDrawerOpen(false);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFilterModalOpen]);
+  }, [drawerOpen]);
 
   function updateDraftFilter(field: keyof Filtros, value: string) {
     setDraftFilters((current) => ({ ...current, [field]: value }));
   }
 
-  function openFilterModal() {
+  function openDrawer() {
     setDraftFilters(filters);
-    setFilterModalOpen(true);
+    setDrawerOpen(true);
   }
 
   function applyDraftFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters(draftFilters);
-    setFilterModalOpen(false);
+    setDrawerOpen(false);
     void load(draftFilters);
   }
 
   function clearFilters() {
     setFilters(filtrosIniciais);
     setDraftFilters(filtrosIniciais);
-    setFilterModalOpen(false);
+    setDrawerOpen(false);
     void load(filtrosIniciais);
   }
 
@@ -189,11 +211,7 @@ export default function ProdutosPage() {
       (total, item) => total + item.estoque_minimo_alerta,
       0,
     );
-    return quantity <= 0
-      ? ["Crítico", "bg-red-500/20 text-red-300"]
-      : quantity <= min
-        ? ["Estoque Baixo", "bg-orange-500/20 text-orange-300"]
-        : ["Em Estoque", "bg-green-500/20 text-green-300"];
+    return quantity <= 0 ? "Crítico" : quantity <= min ? "Estoque baixo" : "Em estoque";
   }
 
   function toggleSort(column: SortColumn) {
@@ -218,7 +236,7 @@ export default function ProdutosPage() {
         case "lucro":
           return price - Number(product.custo_aquisicao);
         case "status":
-          return status(product)[0];
+          return status(product);
         default:
           return product.nome;
       }
@@ -236,111 +254,182 @@ export default function ProdutosPage() {
   })();
 
   const activeFilterCount = contarFiltrosAtivos(filters);
+  const totalUnidades = products.reduce((total, p) => total + stock(p), 0);
+  const valorVenda = products.reduce(
+    (total, p) => total + Number(p.preco_venda_atual || 0) * stock(p),
+    0,
+  );
 
   return (
-    <div className="min-h-screen p-8 bg-[#bfdbfe]">
-      <div className="bg-[#1E3A8A] rounded-[32px] p-8 max-w-[1200px] mx-auto">
-        <div className="mb-8 flex flex-col sm:flex-row gap-4 justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Inventário de Peças</h1>
-            <p className="mt-1 text-white/70">Gerencie o seu catálogo e estoque.</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={openFilterModal}
-              className="relative flex cursor-pointer items-center gap-2 rounded-xl border border-white/20 bg-[#172554] px-5 py-3 font-bold text-white hover:bg-[#1e2f6b]"
-            >
-              <SlidersHorizontal size={20} />
-              Filtros
-              {activeFilterCount > 0 && (
-                <span className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0080ff] px-1.5 text-xs font-bold text-white">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-            <Link href="/produtos/novo" className="flex cursor-pointer items-center gap-2 rounded-xl bg-[#0080ff] px-6 py-3 font-bold text-white hover:bg-blue-500">
-              <Plus size={20} />
-              Novo Produto
-            </Link>
-          </div>
+    <div className="max-w-330 px-8.5 pb-13 pt-7.5 mm-screen-in">
+
+      <div className="mb-5.5 flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Inventário</p>
+          <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">Inventário de peças</h1>
+          <p className="mt-1.5 text-sm text-[#64748b]">
+            {products.length} {products.length === 1 ? "produto" : "produtos"} · {totalUnidades} unidades em estoque · valor de venda {money.format(valorVenda)}
+          </p>
         </div>
-        {error && (
-          <div className="mb-4 rounded-xl bg-red-500/20 p-4 text-red-100">
-            {error} <button onClick={() => void load()} className="cursor-pointer underline">Tentar novamente</button>
-          </div>
-        )}
-        <div className="bg-[#0F172A] rounded-3xl p-6 overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-white/10 text-sm text-white/70">
-                <SortableHeader label="Produto" column="nome" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Categoria" column="categoria" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Estoque" column="estoque" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Preço Venda" column="preco" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Lucro" column="lucro" sort={sort} onSort={toggleSort} />
-                <SortableHeader label="Status" column="status" sort={sort} onSort={toggleSort} />
-                <th className="p-4">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? <tr><td colSpan={7} className="p-8 text-center text-white/70">Carregando…</td></tr> : products.length === 0 ? <tr><td colSpan={7} className="p-8 text-center text-white/70">Nenhum produto cadastrado.</td></tr> : sortedProducts.map((product) => {
-                const [label, color] = status(product);
-                const price = Number(product.preco_venda_atual || 0);
-                const profit = price - Number(product.custo_aquisicao);
-                return <tr key={product.id} className="border-b border-white/5 text-white/90">
-                  <td className="p-4">{product.nome}</td><td className="p-4">{product.categoria?.nome || "—"}</td><td className="p-4">{stock(product)}</td>
-                  <td className="p-4">{product.preco_venda_atual ? money.format(price) : "—"}</td><td className="p-4 text-emerald-400">{product.preco_venda_atual ? money.format(profit) : "—"}</td>
-                  <td className="p-4"><span className={`rounded-full px-3 py-1 text-sm ${color}`}>{label}</span></td>
-                  <td className="p-4"><div className="flex gap-2"><Link aria-label={`Editar ${product.nome}`} href={`/produtos/${product.id}`} className="cursor-pointer text-blue-300 hover:text-white"><Pencil size={18} /></Link><button aria-label={`Excluir ${product.nome}`} onClick={() => remove(product)} className="cursor-pointer text-red-300 hover:text-white"><Trash2 size={18} /></button></div></td>
-                </tr>;
-              })}
-            </tbody>
-          </table>
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={openDrawer}
+            className="mm-hover flex h-10.5 items-center gap-2 rounded-[11px] border border-[#dfe6f2] bg-white px-4.25 text-sm font-bold text-[#334155] hover:border-[#0080ff] hover:text-[#0080ff]"
+          >
+            <SlidersHorizontal size={17} strokeWidth={1.6} />
+            Filtros
+            <span className="flex h-4.75 min-w-4.75 items-center justify-center rounded-full bg-[#0080ff] px-1.25 text-[11px] font-bold text-white">
+              {activeFilterCount}
+            </span>
+          </button>
+          <Link
+            href="/produtos/novo"
+            className="mm-hover flex h-10.5 items-center gap-2 rounded-[11px] bg-[#0080ff] px-4.75 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(0,128,255,0.9)] hover:-translate-y-px hover:bg-[#1a3673] active:translate-y-0 active:scale-[.985]"
+          >
+            <Plus size={17} strokeWidth={1.8} />
+            Novo produto
+          </Link>
         </div>
       </div>
 
-      {isFilterModalOpen && (
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {error} <button onClick={() => void load()} className="cursor-pointer underline">Tentar novamente</button>
+        </div>
+      )}
+
+      <div className="mm-rise-in overflow-hidden rounded-2xl border border-[#e4eaf4] bg-white">
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="filtros-titulo"
-          onClick={() => setFilterModalOpen(false)}
+          className="grid items-center gap-3 border-b border-[#eef2f8] bg-[#fafbfe] px-5.5 py-3.5 text-[11.5px] font-bold uppercase tracking-wider text-[#8494ad]"
+          style={{ gridTemplateColumns: 'minmax(0,2.1fr) 1fr 0.7fr 1fr 1fr 1.05fr 78px' }}
         >
+          <SortableHeader label="Produto" column="nome" sort={sort} onSort={toggleSort} />
+          <SortableHeader label="Categoria" column="categoria" sort={sort} onSort={toggleSort} />
+          <SortableHeader label="Estoque" column="estoque" sort={sort} onSort={toggleSort} />
+          <SortableHeader label="Preço venda" column="preco" sort={sort} onSort={toggleSort} />
+          <SortableHeader label="Lucro un." column="lucro" sort={sort} onSort={toggleSort} />
+          <SortableHeader label="Status" column="status" sort={sort} onSort={toggleSort} />
+          <span className="text-right">Ações</span>
+        </div>
+
+        {loading ? (
+          <div className="p-10 text-center text-sm text-[#8494ad]">Carregando…</div>
+        ) : products.length === 0 ? (
+          <div className="p-10 text-center text-sm text-[#8494ad]">Nenhum produto cadastrado.</div>
+        ) : (
+          sortedProducts.map((product) => {
+            const price = Number(product.preco_venda_atual || 0);
+            const profit = price - Number(product.custo_aquisicao);
+            const statusLabel = status(product);
+            const statusStyle = STATUS_ESTILO[statusLabel];
+            return (
+              <div
+                key={product.id}
+                className="mm-hover grid items-center gap-3 border-b border-[#f4f7fb] px-5.5 py-3.75 last:border-b-0 hover:bg-[#f8fbff]"
+                style={{ gridTemplateColumns: 'minmax(0,2.1fr) 1fr 0.7fr 1fr 1fr 1.05fr 78px' }}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-8.5 w-8.5 shrink-0 items-center justify-center rounded-[10px] bg-[#f1f5fc] text-xs font-extrabold text-[#1a3673]">
+                    {sigla(product.nome)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#0f172a]">{product.nome}</p>
+                    <p className="mt-0.5 text-[11.5px] text-[#94a3b8]">{grade(product)}</p>
+                  </div>
+                </div>
+                <div className="truncate text-[13.5px] text-[#475569]">{product.categoria?.nome || "—"}</div>
+                <div className="text-[13.5px] font-semibold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{stock(product)}</div>
+                <div className="text-[13.5px] text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {product.preco_venda_atual ? money.format(price) : "—"}
+                </div>
+                <div className="text-[13.5px] font-bold text-[#047857]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {product.preco_venda_atual ? money.format(profit) : "—"}
+                </div>
+                <div>
+                  <span
+                    className="inline-block rounded-full px-2.75 py-1 text-[11.5px] font-bold"
+                    style={{ background: statusStyle.bg, color: statusStyle.fg }}
+                  >
+                    {statusLabel}
+                  </span>
+                </div>
+                <div className="flex justify-end gap-1.5">
+                  <Link
+                    aria-label={`Editar ${product.nome}`}
+                    href={`/produtos/${product.id}`}
+                    className="mm-hover flex h-7.5 w-7.5 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#eef4ff] hover:text-[#0080ff]"
+                  >
+                    <Pencil size={16} strokeWidth={1.6} />
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label={`Excluir ${product.nome}`}
+                    onClick={() => remove(product)}
+                    className="mm-hover flex h-7.5 w-7.5 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#fef2f2] hover:text-red-600"
+                  >
+                    <Trash2 size={16} strokeWidth={1.6} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {!loading && products.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-5.5 py-3.5 text-[12.5px] text-[#8494ad]">
+            <span>Mostrando {sortedProducts.length} {sortedProducts.length === 1 ? "produto" : "produtos"}</span>
+            <span className="flex items-center gap-1.75">
+              <i className="block h-2 w-2 rounded-[3px] bg-[#10b981]" />Em estoque
+              <i className="ml-2 block h-2 w-2 rounded-[3px] bg-[#f59e0b]" />Baixo
+              <i className="ml-2 block h-2 w-2 rounded-[3px] bg-[#dc2626]" />Crítico
+            </span>
+          </div>
+        )}
+      </div>
+
+      {drawerOpen && createPortal(
+        <>
           <div
-            className="w-full max-w-2xl rounded-3xl bg-[#172554] p-6 text-white shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            role="presentation"
+            onClick={() => setDrawerOpen(false)}
+            className="mm-fade fixed inset-0 z-[60] bg-[rgba(15,23,42,.34)]"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="filtros-titulo"
+            className="mm-slide-right fixed inset-y-0 right-0 z-[61] flex w-98 flex-col border-l border-[#e4eaf4] bg-white p-6.5 shadow-[-24px_0_60px_-30px_rgba(15,23,42,.45)]"
           >
-            <div className="mb-6 flex items-center justify-between">
-              <h2 id="filtros-titulo" className="text-xl font-bold">
-                Filtrar produtos
-              </h2>
+            <div className="flex items-center justify-between">
+              <h2 id="filtros-titulo" className="text-lg font-extrabold text-[#0f172a]">Filtrar produtos</h2>
               <button
                 type="button"
-                onClick={() => setFilterModalOpen(false)}
+                onClick={() => setDrawerOpen(false)}
                 aria-label="Fechar filtros"
-                className="cursor-pointer rounded-full p-2 text-white/70 hover:bg-white/10 hover:text-white"
+                className="mm-hover flex h-8 w-8 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#f1f5fb]"
               >
-                <X size={20} />
+                <X size={17} strokeWidth={1.8} />
               </button>
             </div>
-            <form onSubmit={applyDraftFilters} className="grid gap-4 md:grid-cols-2">
-              <label className="text-sm md:col-span-2">
+
+            <form onSubmit={applyDraftFilters} className="mt-6 flex flex-1 flex-col gap-4">
+              <label className="block text-[12.5px] font-bold text-[#475569]">
                 Nome do produto
                 <input
                   value={draftFilters.nome}
                   onChange={(event) => updateDraftFilter("nome", event.target.value)}
                   placeholder="Buscar por nome"
-                  className="mt-2 w-full rounded-xl bg-[#0F172A] p-3 placeholder:text-white/40"
+                  className="mm-hover mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 text-sm font-medium text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
                 />
               </label>
-              <label className="text-sm">
+
+              <label className="block text-[12.5px] font-bold text-[#475569]">
                 Categoria
                 <select
                   value={draftFilters.categoriaId}
                   onChange={(event) => updateDraftFilter("categoriaId", event.target.value)}
-                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
+                  className="mt-2 h-11 w-full cursor-pointer rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3 text-sm font-medium text-[#0f172a] outline-none"
                 >
                   <option value="">Todas</option>
                   {categories.map((category) => (
@@ -350,76 +439,74 @@ export default function ProdutosPage() {
                   ))}
                 </select>
               </label>
-              <label className="text-sm">
-                Gênero
-                <select
-                  value={draftFilters.genero}
-                  onChange={(event) => updateDraftFilter("genero", event.target.value)}
-                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
-                >
-                  <option value="">Todos</option>
-                  <option value="masculino">Masculino</option>
-                  <option value="feminino">Feminino</option>
-                  <option value="unisex">Unissex</option>
-                </select>
-              </label>
-              <label className="text-sm">
-                Status
-                <select
-                  value={draftFilters.status}
-                  onChange={(event) => updateDraftFilter("status", event.target.value)}
-                  className="mt-2 w-full cursor-pointer rounded-xl bg-[#0F172A] p-3"
-                >
-                  <option value="">Todos</option>
-                  <option value="em_estoque">Em estoque</option>
-                  <option value="estoque_baixo">Estoque baixo</option>
-                  <option value="critico">Crítico</option>
-                </select>
-              </label>
+
+              <div>
+                <p className="mb-2 text-[12.5px] font-bold text-[#475569]">Status do estoque</p>
+                <div className="flex gap-2">
+                  {STATUS_PILLS.map((pill) => {
+                    const active = draftFilters.status === pill.value;
+                    return (
+                      <button
+                        key={pill.value}
+                        type="button"
+                        onClick={() => updateDraftFilter("status", pill.value)}
+                        className={`mm-hover flex-1 rounded-[10px] border py-2.25 text-center text-[12.5px] font-bold ${
+                          active ? "border-[#0080ff] bg-[#eef4ff] text-[#1a3673]" : "border-[#dfe6f2] bg-white text-[#64748b]"
+                        }`}
+                      >
+                        {pill.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm">
+                <label className="text-[12.5px] font-bold text-[#475569]">
                   Preço mínimo
-                  <div className="mt-2 flex items-center gap-1 rounded-xl bg-[#0F172A] p-3">
-                    <span className="text-white/50">R$</span>
+                  <div className="mt-2 flex h-11 items-center gap-1.5 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.25">
+                    <span className="text-[13px] font-bold text-[#94a3b8]">R$</span>
                     <CurrencyInput
                       value={draftFilters.precoMin}
                       onChange={(value) => updateDraftFilter("precoMin", value)}
-                      className="w-full bg-transparent outline-none"
+                      className="w-full bg-transparent text-sm font-semibold text-[#0f172a] outline-none"
                     />
                   </div>
                 </label>
-                <label className="text-sm">
+                <label className="text-[12.5px] font-bold text-[#475569]">
                   Preço máximo
-                  <div className="mt-2 flex items-center gap-1 rounded-xl bg-[#0F172A] p-3">
-                    <span className="text-white/50">R$</span>
+                  <div className="mt-2 flex h-11 items-center gap-1.5 rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.25">
+                    <span className="text-[13px] font-bold text-[#94a3b8]">R$</span>
                     <CurrencyInput
                       value={draftFilters.precoMax}
                       onChange={(value) => updateDraftFilter("precoMax", value)}
-                      className="w-full bg-transparent outline-none"
+                      className="w-full bg-transparent text-sm font-semibold text-[#0f172a] outline-none"
                     />
                   </div>
                 </label>
               </div>
-              <div className="flex items-center justify-end gap-3 md:col-span-2">
+
+              <div className="mt-auto flex gap-2.5 border-t border-[#eef2f8] pt-4.5">
                 <button
                   type="button"
                   onClick={clearFilters}
                   disabled={loading}
-                  className="cursor-pointer rounded-xl border border-white/30 px-5 py-3 font-bold hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mm-hover flex-1 rounded-[11px] border border-[#dfe6f2] py-3.25 text-sm font-bold text-[#475569] hover:bg-[#f6f8fc] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Limpar filtros
+                  Limpar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="cursor-pointer rounded-xl bg-[#0080ff] px-5 py-3 font-bold hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mm-hover flex-[1.4] rounded-[11px] bg-[#0080ff] py-3.25 text-sm font-bold text-white hover:bg-[#1a3673] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Aplicar filtros
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body,
       )}
     </div>
   );
@@ -444,16 +531,14 @@ function SortableHeader({
     : ArrowUpDown;
 
   return (
-    <th className="p-4">
-      <button
-        type="button"
-        onClick={() => onSort(column)}
-        className="flex cursor-pointer items-center gap-1 hover:text-white"
-        aria-label={`Ordenar por ${label}`}
-      >
-        {label}
-        <Icon size={15} aria-hidden="true" />
-      </button>
-    </th>
+    <button
+      type="button"
+      onClick={() => onSort(column)}
+      className="mm-hover flex cursor-pointer items-center gap-1 text-left hover:text-[#1a3673]"
+      aria-label={`Ordenar por ${label}`}
+    >
+      {label}
+      <Icon size={12} aria-hidden="true" />
+    </button>
   );
 }

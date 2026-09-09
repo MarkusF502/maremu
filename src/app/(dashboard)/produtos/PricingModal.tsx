@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { createPortal } from "react-dom";
 import CurrencyInput from "@/src/components/CurrencyInput";
 
 export type CenarioIA = {
@@ -51,7 +52,7 @@ export default function PricingModal({
   onSalvar: () => void;
   close: () => void;
 }) {
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50">
       <button
         type="button"
@@ -169,6 +170,7 @@ export default function PricingModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
