@@ -5,9 +5,11 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import CurrencyInput from "@/src/components/CurrencyInput";
 import PosicaoMercado from "@/src/components/PosicaoMercado";
+import DiagnosticoMercado from "@/src/components/DiagnosticoMercado";
 import {
   descricaoFaixaMercado,
   posicaoPrecoMercado,
+  type ComposicaoPreco,
   type FaixaMercadoDisponivel,
 } from "@/src/lib/mercado";
 
@@ -33,6 +35,7 @@ const formatBRL = (value: number) =>
  * usando o sistema de movimento mm-* já existente em globals.css.
  */
 export default function PricingModal({
+  composicao,
   faixaMercado,
   precoPiso,
   cenarios,
@@ -47,6 +50,7 @@ export default function PricingModal({
   onSalvar,
   close,
 }: {
+  composicao?: ComposicaoPreco | null;
   faixaMercado: FaixaMercadoDisponivel | null;
   precoPiso: string;
   cenarios: CenarioIA[];
@@ -116,6 +120,11 @@ export default function PricingModal({
           tabIndex={0}
           className="min-h-0 overflow-y-auto overscroll-contain px-5 py-4 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#0080ff] sm:px-7"
         >
+          <DiagnosticoMercado
+            faixa={loading ? null : faixaMercado}
+            composicao={composicao ?? null}
+            cenarios={cenarios}
+          />
           {loading ? (
             <div className="flex flex-col items-center gap-4 py-9">
               <div className="mm-stagger flex gap-2">

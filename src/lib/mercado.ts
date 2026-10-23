@@ -2,6 +2,35 @@ import { apiFetch } from './api';
 
 export type PercentisMercado = { p25: number; mediana: number; p75: number };
 
+export type ComposicaoPreco = {
+  preco_piso: number;
+  custo_base: number;
+  custo_fixo_unitario: number;
+  percentual_variavel: number;
+};
+
+export type DiagnosticoPreco =
+  | 'piso_acima_da_faixa'
+  | 'ideal_acima_da_faixa'
+  | 'tudo_abaixo_da_faixa'
+  | 'sem_diagnostico';
+
+// A ordem é intencional: o piso tem prioridade sobre o ideal e os demais preços.
+// Comparações estritas mantêm os valores iguais a p25/p75 dentro da faixa.
+export function diagnosticarPrecoMercado(
+  faixa: Pick<PercentisMercado, 'p25' | 'p75'>,
+  piso: number,
+  cenarios: readonly { tipo: string; preco_sugerido: number }[],
+): DiagnosticoPreco {
+  if (piso > faixa.p75) return 'piso_acima_da_faixa';
+  const ideal = cenarios.find(({ tipo }) => tipo === 'ideal');
+  if (ideal && ideal.preco_sugerido > faixa.p75) return 'ideal_acima_da_faixa';
+  if (cenarios.length > 0 && cenarios.every(({ preco_sugerido }) => preco_sugerido < faixa.p25)) {
+    return 'tudo_abaixo_da_faixa';
+  }
+  return 'sem_diagnostico';
+}
+
 export type FaixaMercadoDisponivel = {
   disponivel: true;
   sub_categoria: { id: number; nome: string };

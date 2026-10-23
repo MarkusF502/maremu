@@ -14,7 +14,7 @@ import {
 } from "@/src/lib/taxonomia";
 import CurrencyInput from "@/src/components/CurrencyInput";
 import FaixaMercado from "@/src/components/FaixaMercado";
-import { fetchFaixaMercado, type FaixaMercadoResposta } from "@/src/lib/mercado";
+import { fetchFaixaMercado, type ComposicaoPreco, type FaixaMercadoResposta } from "@/src/lib/mercado";
 import NovaCategoriaModal from "@/src/components/NovaCategoriaModal";
 import PricingModal from "./PricingModal";
 
@@ -87,6 +87,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
 
   // ── NOVO: estado das sugestões da IA ──────────────────────────────
   const [cenarios, setCenarios] = useState<CenarioIA[]>([]);
+  const [composicao, setComposicao] = useState<ComposicaoPreco | null>(null);
   const [logId, setLogId] = useState<string | null>(null);
   const [cenarioEscolhido, setCenarioEscolhido] = useState<string>("manual");
   const [loadingCenarios, setLoadingCenarios] = useState(false);
@@ -180,6 +181,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
   async function fetchCenarios(productId: string) {
     setLoadingCenarios(true);
     setCenariosError("");
+    setComposicao(null);
     try {
       const response = await apiFetch(`/api/precificacao/sugerir/${productId}`, {
         method: "POST",
@@ -189,9 +191,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
           "Não foi possível gerar sugestões de preço agora. Você ainda pode definir manualmente.",
         );
       }
-      const data: { log_id: string; cenarios: CenarioIA[] } = await response.json();
+      const data: { log_id: string; cenarios: CenarioIA[]; composicao?: ComposicaoPreco | null } = await response.json();
       setLogId(data.log_id);
       setCenarios(data.cenarios);
+      setComposicao(data.composicao ?? null);
     } catch (err) {
       setCenariosError(
         err instanceof Error ? err.message : "Erro ao buscar sugestões da IA.",
@@ -652,10 +655,13 @@ export default function ProductForm({ productId }: { productId?: string }) {
 
       {priceModalOpen && (
         <PricingModal
+          composicao={composicao}
           faixaMercado={mercado?.categoriaId === categoriaId && mercado.faixa?.disponivel
             ? mercado.faixa
             : null}
-          precoPiso={precoPisoExibido}
+          precoPiso={composicao
+            ? composicao.preco_piso.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : precoPisoExibido}
           cenarios={cenarios}
           cenarioEscolhido={cenarioEscolhido}
           loading={loadingCenarios}
