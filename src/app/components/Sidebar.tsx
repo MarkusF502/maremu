@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Shirt,
+  Tags,
   BarChart3,
   TrendingUp,
   TrendingDown,
@@ -25,6 +26,7 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { label: "Dashboard", href: "/inicio", icon: LayoutDashboard },
   { label: "Produtos", href: "/produtos", icon: Shirt },
+  { label: "Categorias", href: "/categorias", icon: Tags },
   { label: "Relatório", href: "/relatorio", icon: BarChart3 },
   { label: "Cadastrar Produto", href: "/produtos/novo", icon: TrendingUp },
   { label: "Ponto de Venda", href: "/pdv", icon: TrendingDown },

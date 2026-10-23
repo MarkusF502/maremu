@@ -7,6 +7,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  ChevronRight,
   Pencil,
   Plus,
   SlidersHorizontal,
@@ -84,6 +85,7 @@ export default function ProdutosPage() {
   const [draftFilters, setDraftFilters] = useState<Filtros>(filtrosIniciais);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sort, setSort] = useState<Sort>({ column: "nome", direction: "asc" });
+  const [pendentesClassificacao, setPendentesClassificacao] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -135,6 +137,7 @@ export default function ProdutosPage() {
           productsResponse.json(),
         ]);
         setCategories(categoriesBody.categorias);
+        setPendentesClassificacao(categoriesBody.pendentes_classificacao);
         setProducts(productsBody.produtos);
       } catch (err) {
         setError(
@@ -292,6 +295,25 @@ export default function ProdutosPage() {
           </Link>
         </div>
       </div>
+
+      {pendentesClassificacao > 0 && (
+        <Link
+          href="/categorias"
+          className="mm-hover mm-rise-in mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-4.5 py-3.25 text-[13px] font-semibold text-[#92400e] hover:border-[#f59e0b]"
+        >
+          <span>
+            {pendentesClassificacao}{" "}
+            {pendentesClassificacao === 1
+              ? "categoria ainda não foi classificada"
+              : "categorias ainda não foram classificadas"}
+            .
+          </span>
+          <span className="flex items-center gap-1 font-bold underline">
+            Classificar
+            <ChevronRight size={14} strokeWidth={2.2} />
+          </span>
+        </Link>
+      )}
 
       {error && (
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
