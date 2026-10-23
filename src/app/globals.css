@@ -27,6 +27,7 @@
 @keyframes mm-rise-in { from { opacity: 0; transform: translateY(var(--mm-shift-block)) } to { opacity: 1; transform: none } }
 @keyframes mm-pop-in { from { opacity: 0; transform: translateY(18px) scale(.98) } to { opacity: 1; transform: none } }
 @keyframes mm-pop-in-centered { from { opacity: 0; transform: translate(-50%,-50%) scale(.97) } to { opacity: 1; transform: translate(-50%,-50%) scale(1) } }
+@keyframes mm-dialog-in { from { opacity: 0; transform: scale(.97) } to { opacity: 1; transform: scale(1) } }
 @keyframes mm-slide-right { from { opacity: 0; transform: translateX(var(--mm-shift-panel)) } to { opacity: 1; transform: none } }
 @keyframes mm-toast-in { from { opacity: 0; transform: translate(-50%, var(--mm-shift-toast)) } to { opacity: 1; transform: translate(-50%, 0) } }
 @keyframes mm-grow-y { from { transform: scaleY(0) } to { transform: scaleY(1) } }
@@ -38,6 +39,7 @@
 .mm-screen-in { animation: mm-screen-in calc(var(--mm-t-screen) * var(--mm-scale)) var(--mm-ease-out) both; }
 .mm-rise-in { animation: mm-rise-in calc(var(--mm-t-block) * var(--mm-scale)) var(--mm-ease-out) both; }
 .mm-pop-in { animation: mm-pop-in calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
+.mm-dialog-in { animation: mm-dialog-in calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
 .mm-slide-right { animation: mm-slide-right calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
 .mm-fade { animation: mm-fade calc(var(--mm-t-veil) * var(--mm-scale)) both; }
 .mm-toast-in { animation: mm-toast-in calc(var(--mm-t-panel) * var(--mm-scale)) var(--mm-ease-out) both; }
@@ -62,7 +64,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mm-screen-in, .mm-rise-in, .mm-pop-in, .mm-slide-right,
+  .mm-screen-in, .mm-rise-in, .mm-pop-in, .mm-dialog-in, .mm-slide-right,
   .mm-toast-in, .mm-bar, .mm-row, .mm-line { animation-duration: 1ms !important; animation-delay: 0ms !important; }
   .mm-skeleton, .mm-dot { animation: none !important; }
   .mm-hover { transition-duration: 1ms !important; }

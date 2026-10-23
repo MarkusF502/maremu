@@ -30,10 +30,12 @@ export function descricaoFaixaMercado(faixa: FaixaMercadoDisponivel): string {
   return `Lojas semelhantes vendem entre ${money(faixa.preco.p25)} e ${money(faixa.preco.p75)} (mediana ${money(faixa.preco.mediana)}), com base em ${faixa.n_lojas} lojas${porte}.`;
 }
 
+export type PosicaoPrecoMercado = 'abaixo da faixa' | 'dentro da faixa' | 'acima da faixa';
+
 export function posicaoPrecoMercado(
   preco: string | number,
   faixa: FaixaMercadoDisponivel,
-): 'abaixo da faixa' | 'dentro da faixa' | 'acima da faixa' | null {
+): PosicaoPrecoMercado | null {
   if (typeof preco === 'string' && preco.trim() === '') return null;
   const valor = Number(preco);
   if (!Number.isFinite(valor)) return null;

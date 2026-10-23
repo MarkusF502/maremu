@@ -3,6 +3,7 @@ import {
   posicaoPrecoMercado,
   type FaixaMercadoResposta,
 } from "@/src/lib/mercado";
+import PosicaoMercado from "@/src/components/PosicaoMercado";
 
 export default function FaixaMercado({
   faixa,
@@ -33,7 +34,7 @@ export default function FaixaMercado({
       ) : faixa?.disponivel ? (
         <div className="mm-fade">
           <p>{descricaoFaixaMercado(faixa)}</p>
-          {posicao && <p className="mt-2">Seu preço está {posicao}.</p>}
+          {posicao && <div className="mt-2"><PosicaoMercado posicao={posicao} /></div>}
         </div>
       ) : faixa?.motivo === "amostra_insuficiente" ? (
         <p className="mm-fade">
