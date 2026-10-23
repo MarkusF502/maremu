@@ -13,6 +13,8 @@ import {
   rotuloDaCategoria,
 } from "@/src/lib/taxonomia";
 import CurrencyInput from "@/src/components/CurrencyInput";
+import FaixaMercado from "@/src/components/FaixaMercado";
+import { fetchFaixaMercado, type FaixaMercadoResposta } from "@/src/lib/mercado";
 import NovaCategoriaModal from "@/src/components/NovaCategoriaModal";
 import PricingModal from "./PricingModal";
 
@@ -61,6 +63,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [freteUnitario, setFreteUnitario] = useState("0.00");
   const [jaVendoNaLoja, setJaVendoNaLoja] = useState(false);
   const [preco, setPreco] = useState("");
+  const [mercado, setMercado] = useState<{
+    categoriaId: string;
+    faixa: FaixaMercadoResposta | null;
+  } | null>(null);
   const [variantes, setVariantes] = useState<Variante[]>([]);
   const [taxonomia, setTaxonomia] = useState<CategoriaPai[]>([]);
   const [novaVariante, setNovaVariante] = useState<Variante>({
@@ -142,6 +148,27 @@ export default function ProductForm({ productId }: { productId?: string }) {
     }
     load();
   }, [productId]);
+
+  useEffect(() => {
+    if (!categoriaId) return;
+
+    const controller = new AbortController();
+    let ativo = true;
+
+    fetchFaixaMercado(categoriaId, controller.signal)
+      .then((faixa) => {
+        if (ativo) setMercado({ categoriaId, faixa });
+      })
+      .catch(() => {
+        // A comparação é opcional e nunca impede o cadastro ou a edição.
+        if (ativo) setMercado({ categoriaId, faixa: null });
+      });
+
+    return () => {
+      ativo = false;
+      controller.abort();
+    };
+  }, [categoriaId]);
 
   function adicionarCategoria(categoria: Category) {
     setCategories((current) => [...current, categoria]);
@@ -528,6 +555,14 @@ export default function ProductForm({ productId }: { productId?: string }) {
                 />
               </div>
             </label>
+          )}
+
+          {categoriaId && (
+            <FaixaMercado
+              faixa={mercado?.categoriaId === categoriaId ? mercado.faixa : null}
+              carregando={mercado?.categoriaId !== categoriaId}
+              preco={jaVendoNaLoja ? preco : ""}
+            />
           )}
 
           <button
