@@ -8,7 +8,7 @@ export type FaixaMercadoDisponivel = {
   n_lojas: number;
   filtros_aplicados: ('posicionamento' | 'faixa_faturamento')[];
   preco: PercentisMercado;
-  margem: PercentisMercado;
+  margem: PercentisMercado | null;
   giro: PercentisMercado | null;
 };
 
@@ -19,6 +19,28 @@ export type FaixaMercadoResposta = FaixaMercadoDisponivel | {
     | 'sub_categoria_nao_comparavel'
     | 'amostra_insuficiente';
 };
+
+const money = (value: number) =>
+  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+export function descricaoFaixaMercado(faixa: FaixaMercadoDisponivel): string {
+  const porte = faixa.filtros_aplicados.includes('faixa_faturamento')
+    ? ' de porte parecido com a sua'
+    : '';
+  return `Lojas semelhantes vendem entre ${money(faixa.preco.p25)} e ${money(faixa.preco.p75)} (mediana ${money(faixa.preco.mediana)}), com base em ${faixa.n_lojas} lojas${porte}.`;
+}
+
+export function posicaoPrecoMercado(
+  preco: string | number,
+  faixa: FaixaMercadoDisponivel,
+): 'abaixo da faixa' | 'dentro da faixa' | 'acima da faixa' | null {
+  if (typeof preco === 'string' && preco.trim() === '') return null;
+  const valor = Number(preco);
+  if (!Number.isFinite(valor)) return null;
+  if (valor < faixa.preco.p25) return 'abaixo da faixa';
+  if (valor > faixa.preco.p75) return 'acima da faixa';
+  return 'dentro da faixa';
+}
 
 export async function fetchFaixaMercado(
   categoriaId: string,

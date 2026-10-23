@@ -1,7 +1,8 @@
-import type { FaixaMercadoResposta } from "@/src/lib/mercado";
-
-const money = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+import {
+  descricaoFaixaMercado,
+  posicaoPrecoMercado,
+  type FaixaMercadoResposta,
+} from "@/src/lib/mercado";
 
 export default function FaixaMercado({
   faixa,
@@ -12,13 +13,8 @@ export default function FaixaMercado({
   carregando: boolean;
   preco: string;
 }) {
-  const valor = preco.trim() === "" ? null : Number(preco);
-  const posicao = faixa?.disponivel && valor !== null && Number.isFinite(valor)
-    ? valor < faixa.preco.p25
-      ? "Seu preço está abaixo da faixa."
-      : valor > faixa.preco.p75
-        ? "Seu preço está acima da faixa."
-        : "Seu preço está dentro da faixa."
+  const posicao = faixa?.disponivel
+    ? posicaoPrecoMercado(preco, faixa)
     : null;
 
   return (
@@ -36,15 +32,8 @@ export default function FaixaMercado({
         </div>
       ) : faixa?.disponivel ? (
         <div className="mm-fade">
-          <p>
-            Lojas semelhantes vendem entre {money(faixa.preco.p25)} e{" "}
-            {money(faixa.preco.p75)} (mediana {money(faixa.preco.mediana)}), com
-            base em {faixa.n_lojas} lojas
-            {faixa.filtros_aplicados.includes("faixa_faturamento")
-              ? " de porte parecido com a sua"
-              : ""}.
-          </p>
-          {posicao && <p className="mt-2">{posicao}</p>}
+          <p>{descricaoFaixaMercado(faixa)}</p>
+          {posicao && <p className="mt-2">Seu preço está {posicao}.</p>}
         </div>
       ) : faixa?.motivo === "amostra_insuficiente" ? (
         <p className="mm-fade">

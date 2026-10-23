@@ -3,6 +3,11 @@
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import CurrencyInput from "@/src/components/CurrencyInput";
+import {
+  descricaoFaixaMercado,
+  posicaoPrecoMercado,
+  type FaixaMercadoDisponivel,
+} from "@/src/lib/mercado";
 
 export type CenarioIA = {
   id: "cenario_1" | "cenario_2" | "cenario_3";
@@ -26,6 +31,7 @@ const formatBRL = (value: number) =>
  * usando o sistema de movimento mm-* já existente em globals.css.
  */
 export default function PricingModal({
+  faixaMercado,
   precoPiso,
   cenarios,
   cenarioEscolhido,
@@ -39,6 +45,7 @@ export default function PricingModal({
   onSalvar,
   close,
 }: {
+  faixaMercado: FaixaMercadoDisponivel | null;
   precoPiso: string;
   cenarios: CenarioIA[];
   cenarioEscolhido: string;
@@ -52,6 +59,10 @@ export default function PricingModal({
   onSalvar: () => void;
   close: () => void;
 }) {
+  const posicaoManual = faixaMercado
+    ? posicaoPrecoMercado(preco, faixaMercado)
+    : null;
+
   return createPortal(
     <div className="fixed inset-0 z-50">
       <button
@@ -61,7 +72,7 @@ export default function PricingModal({
         className="mm-fade absolute inset-0 bg-slate-900/45"
       />
       <div
-        className="mm-pop-in-centered absolute left-1/2 top-1/2 w-[calc(100%-32px)] max-w-[490px] -translate-x-1/2 -translate-y-1/2 rounded-[20px] bg-white p-7 text-slate-900 shadow-[0_44px_90px_-30px_rgba(15,23,42,.55)]"
+        className="mm-pop-in-centered absolute left-1/2 top-1/2 max-h-[calc(100dvh-32px)] w-[calc(100%-32px)] max-w-[490px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-[20px] bg-white p-7 text-slate-900 shadow-[0_44px_90px_-30px_rgba(15,23,42,.55)]"
       >
         <div className="mb-1.5 flex items-start justify-between">
           <h2 className="text-[19px] font-extrabold">Ajustar preço de venda</h2>
@@ -96,9 +107,19 @@ export default function PricingModal({
           </div>
         ) : (
           <>
+            <div aria-live="polite" aria-atomic="true">
+              {faixaMercado && (
+                <p className="mm-fade mb-4 text-[12.5px] leading-relaxed text-slate-500">
+                  {descricaoFaixaMercado(faixaMercado)}
+                </p>
+              )}
+            </div>
             <div className="mm-stagger flex flex-col gap-2.5">
               {cenarios.map((cenario, i) => {
                 const active = cenarioEscolhido === cenario.id;
+                const posicao = faixaMercado
+                  ? posicaoPrecoMercado(cenario.preco_sugerido, faixaMercado)
+                  : null;
                 return (
                   <button
                     key={cenario.id}
@@ -126,6 +147,11 @@ export default function PricingModal({
                     <p className="mt-1 text-[12.5px] leading-relaxed text-slate-500">
                       {cenario.explicacao}
                     </p>
+                    {posicao && (
+                      <p className="mt-2 text-[12px] font-normal text-slate-500">
+                        Preço {posicao}.
+                      </p>
+                    )}
                   </button>
                 );
               })}
@@ -151,6 +177,14 @@ export default function PricingModal({
                 />
               </div>
             </label>
+
+            <div aria-live="polite" aria-atomic="true">
+              {posicaoManual && (
+                <p className="mt-2 text-[12px] text-slate-500">
+                  Seu preço está {posicaoManual}.
+                </p>
+              )}
+            </div>
 
             <button
               type="button"

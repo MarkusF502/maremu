@@ -652,6 +652,9 @@ export default function ProductForm({ productId }: { productId?: string }) {
 
       {priceModalOpen && (
         <PricingModal
+          faixaMercado={mercado?.categoriaId === categoriaId && mercado.faixa?.disponivel
+            ? mercado.faixa
+            : null}
           precoPiso={precoPisoExibido}
           cenarios={cenarios}
           cenarioEscolhido={cenarioEscolhido}
