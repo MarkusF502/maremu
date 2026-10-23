@@ -9,7 +9,6 @@ import { apiFetch } from "@/src/lib/api";
 import {
   CategoriaLoja,
   CategoriaPai,
-  classificacaoLocal,
   fetchTaxonomia,
   mensagemDeErro,
   nomeDaClassificacao,
@@ -182,10 +181,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
         return;
       }
       const { categoria }: { categoria: Category } = await response.json();
-      setCategories((current) => [
-        ...current,
-        { ...categoria, sub_categoria: classificacaoLocal(pai, sub) },
-      ]);
+      setCategories((current) => [...current, categoria]);
       setCategoriaId(categoria.id);
       setCategoryModal(false);
     } catch {

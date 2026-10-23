@@ -8,7 +8,6 @@ import {
   CategoriaLoja,
   CategoriaPai,
   caminhoDaClassificacao,
-  classificacaoLocal,
   fetchTaxonomia,
   mensagemDeErro,
 } from "@/src/lib/taxonomia";
@@ -89,16 +88,14 @@ export default function CategoriasPage() {
 
   async function classificar(categoria: CategoriaLoja) {
     const escolha = escolhas[categoria.id];
-    const pai = taxonomia.find(({ id }) => id === escolha?.paiId);
-    const sub = pai?.sub_categorias.find(({ id }) => id === escolha?.subId);
-    if (!pai || !sub) return;
+    if (!escolha?.subId) return;
 
     setSalvando(categoria.id);
     setErros((current) => semAChave(current, categoria.id));
     try {
       const response = await apiFetch(`/api/categorias/${categoria.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ sub_categoria_id: sub.id }),
+        body: JSON.stringify({ sub_categoria_id: escolha.subId }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
@@ -111,16 +108,10 @@ export default function CategoriasPage() {
         }));
         return;
       }
+      const { categoria: classificada }: { categoria: CategoriaLoja } =
+        await response.json();
       setCategorias((current) =>
-        current.map((item) =>
-          item.id === categoria.id
-            ? {
-                ...item,
-                sub_categoria_id: sub.id,
-                sub_categoria: classificacaoLocal(pai, sub),
-              }
-            : item,
-        ),
+        current.map((item) => (item.id === categoria.id ? classificada : item)),
       );
       fecharReclassificacao(categoria.id);
     } catch {

@@ -1,7 +1,7 @@
 import { apiFetch } from './api';
 
 // Árvore fixa de 2 níveis servida por GET /api/taxonomia.
-export type SubCategoria = { id: number; nome: string };
+export type SubCategoria = { id: number; nome: string; complementar: boolean };
 export type CategoriaPai = { id: number; nome: string; sub_categorias: SubCategoria[] };
 
 // Classificação que acompanha cada categoria da loja em /api/categorias.
@@ -50,16 +50,6 @@ export function rotuloDaCategoria(categoria: CategoriaLoja): string {
   return caminho ? `${categoria.nome} (${caminho})` : `${categoria.nome} (sem classificação)`;
 }
 
-// A resposta do POST/PATCH não traz a relação carregada; monta a classificação
-// a partir da árvore para a lista refletir o novo estado sem recarregar tudo.
-export function classificacaoLocal(pai: CategoriaPai, sub: SubCategoria): Classificacao {
-  return {
-    id: sub.id,
-    categoria_pai_id: pai.id,
-    nome: sub.nome,
-    categoria_pai: { id: pai.id, nome: pai.nome },
-  };
-}
 
 // Mensagens de validação do Laravel (422) achatadas para exibição.
 export function mensagemDeErro(body: unknown, fallback: string): string {
