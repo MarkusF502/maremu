@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Pencil, Plus, X } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import {
   CategoriaLoja,
@@ -11,6 +10,7 @@ import {
   fetchTaxonomia,
   mensagemDeErro,
 } from "@/src/lib/taxonomia";
+import NovaCategoriaModal from "@/src/components/NovaCategoriaModal";
 import TaxonomiaSelects from "@/src/components/TaxonomiaSelects";
 
 type Escolha = { paiId: number | ""; subId: number | "" };
@@ -38,6 +38,8 @@ export default function CategoriasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tentativa, setTentativa] = useState(0);
+  const [nomesEmEdicao, setNomesEmEdicao] = useState<Record<string, string>>({});
+  const [modalAberto, setModalAberto] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -86,42 +88,87 @@ export default function CategoriasPage() {
     setErros((current) => semAChave(current, categoriaId));
   }
 
-  async function classificar(categoria: CategoriaLoja) {
-    const escolha = escolhas[categoria.id];
-    if (!escolha?.subId) return;
-
+  // PATCH comum à classificação e à renomeação: a linha é substituída pela
+  // categoria devolvida pela API.
+  async function salvarCategoria(
+    categoria: CategoriaLoja,
+    payload: { nome?: string; sub_categoria_id?: number },
+    fallback: string,
+  ): Promise<boolean> {
     setSalvando(categoria.id);
     setErros((current) => semAChave(current, categoria.id));
     try {
       const response = await apiFetch(`/api/categorias/${categoria.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ sub_categoria_id: escolha.subId }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         setErros((current) => ({
           ...current,
-          [categoria.id]: mensagemDeErro(
-            body,
-            "Não foi possível classificar a categoria.",
-          ),
+          [categoria.id]: mensagemDeErro(body, fallback),
         }));
-        return;
+        return false;
       }
-      const { categoria: classificada }: { categoria: CategoriaLoja } =
+      const { categoria: atualizada }: { categoria: CategoriaLoja } =
         await response.json();
       setCategorias((current) =>
-        current.map((item) => (item.id === categoria.id ? classificada : item)),
+        current.map((item) => (item.id === categoria.id ? atualizada : item)),
       );
-      fecharReclassificacao(categoria.id);
+      return true;
     } catch {
-      setErros((current) => ({
-        ...current,
-        [categoria.id]: "Não foi possível classificar a categoria.",
-      }));
+      setErros((current) => ({ ...current, [categoria.id]: fallback }));
+      return false;
     } finally {
       setSalvando(null);
     }
+  }
+
+  async function classificar(categoria: CategoriaLoja) {
+    const escolha = escolhas[categoria.id];
+    if (!escolha?.subId) return;
+
+    const ok = await salvarCategoria(
+      categoria,
+      { sub_categoria_id: escolha.subId },
+      "Não foi possível classificar a categoria.",
+    );
+    if (ok) fecharReclassificacao(categoria.id);
+  }
+
+  function abrirEdicaoDoNome(categoria: CategoriaLoja) {
+    setErros((current) => semAChave(current, categoria.id));
+    setNomesEmEdicao((current) => ({ ...current, [categoria.id]: categoria.nome }));
+  }
+
+  function fecharEdicaoDoNome(categoriaId: string) {
+    setNomesEmEdicao((current) => semAChave(current, categoriaId));
+    setErros((current) => semAChave(current, categoriaId));
+  }
+
+  async function renomear(categoria: CategoriaLoja) {
+    const nome = (nomesEmEdicao[categoria.id] ?? "").trim();
+    if (!nome) return;
+
+    // Sem mudança, não há o que pedir à API.
+    if (nome === categoria.nome) {
+      fecharEdicaoDoNome(categoria.id);
+      return;
+    }
+
+    const ok = await salvarCategoria(
+      categoria,
+      { nome },
+      "Não foi possível renomear a categoria.",
+    );
+    if (ok) fecharEdicaoDoNome(categoria.id);
+  }
+
+  function adicionarCategoria(categoria: CategoriaLoja) {
+    setCategorias((current) =>
+      [...current, categoria].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+    );
+    setModalAberto(false);
   }
 
   const pendentes = categorias.filter(
@@ -153,13 +200,15 @@ export default function CategoriasPage() {
             )}
           </p>
         </div>
-        <Link
-          href="/produtos/novo"
-          className="mm-hover flex h-10.5 items-center gap-2 rounded-[11px] border border-[#dfe6f2] bg-white px-4.25 text-sm font-bold text-[#334155] hover:border-[#0080ff] hover:text-[#0080ff]"
+        <button
+          type="button"
+          onClick={() => setModalAberto(true)}
+          disabled={loading}
+          className="mm-hover flex h-10.5 items-center gap-2 rounded-[11px] bg-[#0080ff] px-4.75 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(0,128,255,0.9)] hover:-translate-y-px hover:bg-[#1a3673] active:translate-y-0 active:scale-[.985] disabled:opacity-60"
         >
           <Plus size={17} strokeWidth={1.8} />
           Nova categoria
-        </Link>
+        </button>
       </div>
 
       {error && (
@@ -196,6 +245,7 @@ export default function CategoriasPage() {
             const escolha = escolhas[categoria.id];
             const caminho = caminhoDaClassificacao(categoria);
             const erro = erros[categoria.id];
+            const nomeEmEdicao = nomesEmEdicao[categoria.id];
 
             return (
               <div
@@ -204,9 +254,64 @@ export default function CategoriasPage() {
               >
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div className="min-w-50 flex-1">
-                    <p className="text-sm font-semibold text-[#0f172a]">
-                      {categoria.nome}
-                    </p>
+                    {nomeEmEdicao === undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-semibold text-[#0f172a]">
+                          {categoria.nome}
+                        </p>
+                        <button
+                          type="button"
+                          aria-label={`Editar o nome de ${categoria.nome}`}
+                          onClick={() => abrirEdicaoDoNome(categoria)}
+                          className="mm-hover flex h-7 w-7 items-center justify-center rounded-[8px] text-[#a5b2c6] hover:bg-[#eef4ff] hover:text-[#0080ff]"
+                        >
+                          <Pencil size={14} strokeWidth={1.8} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mm-rise-in flex items-center gap-1.5">
+                        <input
+                          autoFocus
+                          value={nomeEmEdicao}
+                          disabled={salvando === categoria.id}
+                          aria-label={`Nome de ${categoria.nome}`}
+                          onChange={(event) =>
+                            setNomesEmEdicao((current) => ({
+                              ...current,
+                              [categoria.id]: event.target.value,
+                            }))
+                          }
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void renomear(categoria);
+                            }
+                            if (event.key === "Escape") {
+                              event.preventDefault();
+                              fecharEdicaoDoNome(categoria.id);
+                            }
+                          }}
+                          className="h-9 w-full max-w-60 rounded-[10px] border border-[#e0e7f3] bg-[#fbfcfe] px-3 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Salvar nome"
+                          onClick={() => void renomear(categoria)}
+                          disabled={!nomeEmEdicao.trim() || salvando === categoria.id}
+                          className="mm-hover flex h-9 w-9 items-center justify-center rounded-[10px] bg-[#0080ff] text-white hover:bg-[#1a3673] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Check size={15} strokeWidth={2.4} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Cancelar edição do nome"
+                          onClick={() => fecharEdicaoDoNome(categoria.id)}
+                          className="mm-hover flex h-9 w-9 items-center justify-center rounded-[10px] border border-[#dfe6f2] text-[#64748b] hover:bg-[#f1f5fb]"
+                        >
+                          <X size={15} strokeWidth={2} />
+                        </button>
+                      </div>
+                    )}
                     {caminho ? (
                       <p className="mt-1 flex items-center gap-1.5 text-[12.5px] text-[#047857]">
                         <Check size={13} strokeWidth={2.4} />
@@ -275,6 +380,14 @@ export default function CategoriasPage() {
           })
         )}
       </div>
+
+      {modalAberto && (
+        <NovaCategoriaModal
+          arvore={taxonomia}
+          onCriada={adicionarCategoria}
+          close={() => setModalAberto(false)}
+        />
+      )}
     </div>
   );
 }

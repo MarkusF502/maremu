@@ -10,12 +10,10 @@ import {
   CategoriaLoja,
   CategoriaPai,
   fetchTaxonomia,
-  mensagemDeErro,
-  nomeDaClassificacao,
   rotuloDaCategoria,
 } from "@/src/lib/taxonomia";
 import CurrencyInput from "@/src/components/CurrencyInput";
-import TaxonomiaSelects from "@/src/components/TaxonomiaSelects";
+import NovaCategoriaModal from "@/src/components/NovaCategoriaModal";
 import PricingModal from "./PricingModal";
 
 type Category = CategoriaLoja;
@@ -64,12 +62,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [jaVendoNaLoja, setJaVendoNaLoja] = useState(false);
   const [preco, setPreco] = useState("");
   const [variantes, setVariantes] = useState<Variante[]>([]);
-  const [novaCategoria, setNovaCategoria] = useState("");
   const [taxonomia, setTaxonomia] = useState<CategoriaPai[]>([]);
-  const [novoPaiId, setNovoPaiId] = useState<number | "">("");
-  const [novaSubId, setNovaSubId] = useState<number | "">("");
-  const [categoryModalError, setCategoryModalError] = useState("");
-  const [savingCategory, setSavingCategory] = useState(false);
   const [novaVariante, setNovaVariante] = useState<Variante>({
     tamanho: "",
     cor: "",
@@ -150,45 +143,10 @@ export default function ProductForm({ productId }: { productId?: string }) {
     load();
   }, [productId]);
 
-  function abrirModalDeCategoria() {
-    setNovaCategoria("");
-    setNovoPaiId("");
-    setNovaSubId("");
-    setCategoryModalError("");
-    setCategoryModal(true);
-  }
-
-  async function createCategory() {
-    const pai = taxonomia.find((item) => item.id === novoPaiId);
-    const sub = pai?.sub_categorias.find((item) => item.id === novaSubId);
-    if (!pai || !sub) return;
-
-    // Sem nome próprio, a categoria herda o nome da classificação escolhida.
-    const nomeDaCategoria = novaCategoria.trim() || nomeDaClassificacao(pai, sub);
-
-    setCategoryModalError("");
-    setSavingCategory(true);
-    try {
-      const response = await apiFetch("/api/categorias", {
-        method: "POST",
-        body: JSON.stringify({ nome: nomeDaCategoria, sub_categoria_id: sub.id }),
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        setCategoryModalError(
-          mensagemDeErro(body, "Não foi possível criar a categoria."),
-        );
-        return;
-      }
-      const { categoria }: { categoria: Category } = await response.json();
-      setCategories((current) => [...current, categoria]);
-      setCategoriaId(categoria.id);
-      setCategoryModal(false);
-    } catch {
-      setCategoryModalError("Não foi possível criar a categoria.");
-    } finally {
-      setSavingCategory(false);
-    }
+  function adicionarCategoria(categoria: Category) {
+    setCategories((current) => [...current, categoria]);
+    setCategoriaId(categoria.id);
+    setCategoryModal(false);
   }
 
   // ── NOVO: busca as sugestões assim que o produto é criado ────────
@@ -353,10 +311,6 @@ export default function ProductForm({ productId }: { productId?: string }) {
     );
   }
 
-  const paiEscolhido = taxonomia.find(({ id }) => id === novoPaiId);
-  const subEscolhida = paiEscolhido?.sub_categorias.find(({ id }) => id === novaSubId);
-  const nomeSugeridoParaCategoria =
-    paiEscolhido && subEscolhida ? nomeDaClassificacao(paiEscolhido, subEscolhida) : "";
   const categoriaSelecionada = categories.find(({ id }) => id === categoriaId);
   const categoriaSemClassificacao =
     Boolean(categoriaSelecionada) && !categoriaSelecionada?.sub_categoria_id;
@@ -429,7 +383,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
               </label>
               <button
                 type="button"
-                onClick={abrirModalDeCategoria}
+                onClick={() => setCategoryModal(true)}
                 className="mm-hover flex h-11 items-center justify-center gap-1.75 self-end rounded-[11px] border border-dashed border-[#c9d7ee] text-[13px] font-bold text-[#0080ff] hover:border-[#0080ff] hover:bg-[#f5f9ff]"
               >
                 <Plus size={15} strokeWidth={2} />
@@ -590,75 +544,12 @@ export default function ProductForm({ productId }: { productId?: string }) {
         </aside>
       </form>
 
-      {categoryModal && createPortal(
-        <div className="fixed inset-0 z-50">
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={() => setCategoryModal(false)}
-            className="mm-fade absolute inset-0 bg-[rgba(15,23,42,.4)]"
-          />
-          <div className="mm-pop-in-centered absolute left-1/2 top-1/2 w-[calc(100%-32px)] max-w-100 -translate-x-1/2 -translate-y-1/2 rounded-[18px] bg-white p-6.5 shadow-[0_40px_80px_-30px_rgba(15,23,42,.5)]">
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-[#0f172a]">Nova categoria</h2>
-              <button
-                type="button"
-                onClick={() => setCategoryModal(false)}
-                aria-label="Fechar"
-                className="mm-hover flex h-8 w-8 items-center justify-center rounded-[9px] text-[#64748b] hover:bg-[#f1f5fb]"
-              >
-                <X size={17} strokeWidth={1.8} />
-              </button>
-            </div>
-            <p className="mb-4.5 text-[12.5px] leading-relaxed text-[#64748b]">
-              A classificação é o que permite comparar seus preços com lojas
-              semelhantes.
-            </p>
-
-            <TaxonomiaSelects
-              arvore={taxonomia}
-              paiId={novoPaiId}
-              subCategoriaId={novaSubId}
-              disabled={savingCategory}
-              onChange={(paiId, subId) => {
-                setNovoPaiId(paiId);
-                setNovaSubId(subId);
-                setCategoryModalError("");
-              }}
-            />
-
-            <label className="mt-3.5 block text-[12.5px] font-bold text-[#475569]">
-              Nome na sua loja (opcional)
-              <input
-                value={novaCategoria}
-                onChange={(e) => setNovaCategoria(e.target.value)}
-                placeholder={nomeSugeridoParaCategoria || "Ex: Camisetas"}
-                className="mt-2 h-11 w-full rounded-[11px] border border-[#e0e7f3] bg-[#fbfcfe] px-3.5 text-sm font-semibold text-[#0f172a] outline-none focus:border-[#0080ff] focus:shadow-[0_0_0_3px_rgba(0,128,255,.14)]"
-              />
-            </label>
-            {nomeSugeridoParaCategoria && (
-              <p className="mt-2 text-[11.5px] text-[#8494ad]">
-                Em branco, a categoria fica com o nome “{nomeSugeridoParaCategoria}”.
-              </p>
-            )}
-
-            {categoryModalError && (
-              <p className="mm-rise-in mt-4 rounded-[11px] border border-red-200 bg-red-50 px-3.5 py-2.75 text-[12.5px] text-red-700">
-                {categoryModalError}
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={createCategory}
-              disabled={!novaSubId || savingCategory}
-              className="mm-hover mt-5 w-full rounded-xl bg-[#1a3673] py-3 text-center text-sm font-bold text-white hover:bg-[#0080ff] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {savingCategory ? "Salvando…" : "Salvar categoria"}
-            </button>
-          </div>
-        </div>,
-        document.body,
+      {categoryModal && (
+        <NovaCategoriaModal
+          arvore={taxonomia}
+          onCriada={adicionarCategoria}
+          close={() => setCategoryModal(false)}
+        />
       )}
 
       {variantModal && createPortal(
