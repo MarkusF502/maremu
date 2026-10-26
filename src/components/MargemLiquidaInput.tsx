@@ -57,7 +57,7 @@ export default function MargemLiquidaInput({
   return (
     <div className="w-full min-w-0 max-w-full space-y-2">
       <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Lucro limpo desejado</label>
-      <p id={`${id}-explicacao`} className="max-w-full whitespace-normal wrap-break-word text-xs leading-relaxed text-slate-500">
+      <p id={`${id}-explicacao`} className="min-w-0 max-w-full whitespace-normal wrap-break-word text-xs leading-relaxed text-slate-500 sm:max-w-[calc((100%_-_0.75rem)/2)]">
         É o que sobra para você de cada venda, depois de pagar a peça, as contas da loja e os impostos.
       </p>
       {sugestao && !editado && <p className="text-xs text-[#2563EB]">Sugestão para o seu posicionamento</p>}
