@@ -48,14 +48,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex h-full w-63 shrink-0 flex-col bg-white border-r border-[#e4eaf4]">
-      <div className="flex items-center gap-2.5 px-5.5 pb-4.5 pt-6.5">
+    <aside className="flex h-full w-14 md:w-63 shrink-0 flex-col bg-white border-r border-[#e4eaf4]">
+      <div className="hidden md:flex items-center gap-2.5 px-5.5 pb-4.5 pt-6.5">
         <div className="relative h-6.5 w-26">
           <Image src="/logo.png" alt="Maremu" fill sizes="104px" className="object-contain object-left" priority />
         </div>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 px-3.5 py-2.5">
+      <nav className="flex flex-1 flex-col gap-1 px-1 md:px-3.5 py-2.5">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href;
@@ -69,13 +69,13 @@ export function Sidebar() {
               }`}
             >
               <Icon size={19} className="shrink-0" strokeWidth={1.5} />
-              {item.label}
+              <span className="sr-only md:not-sr-only">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-[#eef1f7] px-3.5 py-3">
+      <div className="flex flex-col gap-1 border-t border-[#eef1f7] px-1 md:px-3.5 py-3">
         <Link
           href="/configuracoes"
           aria-current={pathname === "/configuracoes" ? "page" : undefined}
@@ -84,7 +84,7 @@ export function Sidebar() {
           }`}
         >
           <Settings size={19} className="shrink-0" strokeWidth={1.5} />
-          Configurações
+          <span className="sr-only md:not-sr-only">Configurações</span>
         </Link>
         <button
           type="button"
@@ -92,7 +92,7 @@ export function Sidebar() {
           className="flex w-full items-center gap-3 rounded-[11px] px-3 py-2.75 text-left text-sm font-semibold text-red-600 transition-colors duration-200 hover:bg-red-50"
         >
           <LogOut size={19} className="shrink-0" strokeWidth={1.5} />
-          Sair
+          <span className="sr-only md:not-sr-only">Sair</span>
         </button>
       </div>
     </aside>

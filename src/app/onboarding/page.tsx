@@ -10,7 +10,6 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertTriangle,
-  Percent,
   DollarSign,
   ShoppingBag,
   Tag,
@@ -20,6 +19,9 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
+import MargemLiquidaInput from "@/src/components/MargemLiquidaInput";
+import { DadosSimulacaoMargem, margemLiquidaValida } from "@/src/lib/margem-liquida";
+import { useTributacaoOnboarding } from "@/src/lib/use-tributacao-onboarding";
 import CurrencyInput from "@/src/components/CurrencyInput";
 import PendenciaWizardModal, { Pendencia } from "@/src/components/onboarding/PendenciaWizardModal";
 
@@ -82,13 +84,8 @@ const CANAIS_DISPONIVEIS = ["loja_fisica", "instagram_whatsapp", "marketplace"] 
 const TEXTO_EXEMPLO =
   "Ex: 'Tenho uma loja de roupas femininas em Campinas, focada em moda casual com preço " +
   "acessível. Vendo cerca de 80 peças por mês, faturando em torno de R$ 12 mil. Tenho uma " +
-  "funcionária, pago R$ 2.500 de aluguel e uns R$ 800 de outras contas fixas. Quero ter pelo " +
-  "menos 25% de lucro.' — Não se preocupe em ser exato; você poderá revisar todos os valores " +
+  "funcionária, pago R$ 2.500 de aluguel e uns R$ 800 de outras contas fixas.' — Não se preocupe em ser exato; você poderá revisar todos os valores " +
   "antes de confirmar.";
-
-function pct(val: number) {
-  return (val * 100).toFixed(0);
-}
 
 function StepIndicator({ current }: { current: 1 | 2 | 3 }) {
   const steps: { n: 1 | 2 | 3; label: string }[] = [
@@ -318,7 +315,7 @@ function TelaDescricao({
             Descreva seu negócio
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Conte como sua loja funciona hoje. Nossa IA vai estimar faturamento, custos, margem e
+            Conte como sua loja funciona hoje. Nossa IA vai estimar faturamento, custos e
             volume de vendas a partir do que você escrever — você revisa tudo antes de confirmar.
           </p>
         </div>
@@ -490,6 +487,8 @@ function TelaRevisaoIa({
   const [margem, setMargem] = useState(Number(estimativas.margem_lucro_desejada.valor ?? 0.25));
   const [volume, setVolume] = useState(Number(estimativas.volume_vendas_esperado.valor ?? 0));
   const [canais, setCanais] = useState<string[]>(dadosFactuais.canais);
+  const [margemInviavel, setMargemInviavel] = useState(false);
+  const tributacao = useTributacaoOnboarding(dadosFactuais.regime, canais, posicionamento);
 
   const toggleCanal = (canal: string) =>
     setCanais((prev) => (prev.includes(canal) ? prev.filter((c) => c !== canal) : [...prev, canal]));
@@ -542,21 +541,10 @@ function TelaRevisaoIa({
               </ReviewField>
             ))}
 
-            <ReviewField label="Margem de lucro desejada" icon={Percent}>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="1"
-                  min="1"
-                  max="99"
-                  value={Number(pct(margem))}
-                  onChange={(e) => setMargem(Number(e.target.value) / 100)}
-                  className={`${inputClass} pr-8`}
-                />
-                <span className="absolute right-3 top-2.5 text-slate-400 text-sm">%</span>
-              </div>
-              <p className="text-xs text-slate-400">{estimativas.margem_lucro_desejada.explicacao}</p>
-            </ReviewField>
+            <div className="sm:col-span-2">
+              <MargemLiquidaInput value={margem} onChange={setMargem} onInviavelChange={setMargemInviavel}
+                dadosSimulacao={{ ...tributacao, custo_fixo_mensal: custoFixo, volume_vendas_esperado: volume }} />
+            </div>
 
             <ReviewField label="Volume de vendas esperado">
               <div className="relative">
@@ -619,7 +607,7 @@ function TelaRevisaoIa({
                 canais,
               })
             }
-            disabled={isLoading}
+            disabled={isLoading || margemInviavel || !margemLiquidaValida(margem)}
             className="flex-1 py-3 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-bold shadow-md shadow-[#2563EB]/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
@@ -651,6 +639,7 @@ function TelaRevisaoDeterministica({
   error: string;
 }) {
   const [data, setData] = useState<InferredData>(inferredData);
+  const [margemInviavel, setMargemInviavel] = useState(false);
 
   const setLoja = (patch: Partial<InferredData["loja"]>) => setData((d) => ({ ...d, loja: { ...d.loja, ...patch } }));
 
@@ -694,20 +683,15 @@ function TelaRevisaoDeterministica({
               </div>
             </ReviewField>
 
-            <ReviewField label="Margem de lucro desejada" icon={Percent} tooltip={data.tooltips.margem_lucro_desejada}>
-              <div className="relative">
-                <input
-                  type="number"
-                  step="1"
-                  min="1"
-                  max="99"
-                  value={Number(pct(data.loja.margem_lucro_desejada))}
-                  onChange={(e) => setLoja({ margem_lucro_desejada: Number(e.target.value) / 100 })}
-                  className={`${inputClass} pr-8`}
-                />
-                <span className="absolute right-3 top-2.5 text-slate-400 text-sm">%</span>
-              </div>
-            </ReviewField>
+            <div className="sm:col-span-2">
+              <MargemLiquidaInput value={data.loja.margem_lucro_desejada}
+                onChange={(margem) => setLoja({ margem_lucro_desejada: margem })}
+                onInviavelChange={setMargemInviavel} sugestao
+                dadosSimulacao={{ custo_fixo_mensal: data.loja.custo_fixo_mensal,
+                  volume_vendas_esperado: data.loja.volume_vendas_esperado,
+                  aliquota_efetiva: data.loja.aliquota_efetiva,
+                  taxa_canal: data.canais.length ? Math.max(...data.canais.map((c) => c.taxa_percentual)) : undefined }} />
+            </div>
 
             <ReviewField label="Alíquota de imposto" tooltip={data.tooltips.aliquota_efetiva}>
               <div className="relative">
@@ -770,7 +754,7 @@ function TelaRevisaoDeterministica({
         <div className="flex gap-3 pb-2">
           <button
             onClick={() => onSubmit(data)}
-            disabled={isLoading}
+            disabled={isLoading || margemInviavel || !margemLiquidaValida(data.loja.margem_lucro_desejada)}
             className="flex-1 py-3 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-sm font-bold shadow-md shadow-[#2563EB]/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isLoading ? (
@@ -807,6 +791,7 @@ export default function OnboardingPage() {
   // Wizard de pendências (Spec-Extracao-Assertiva-Onboarding-Maremu §10):
   // sobreposto à Tela 2 (descrição) — não é uma tela nova, não navega.
   const [pendencias, setPendencias] = useState<Pendencia[] | null>(null);
+  const [dadosSimulacao, setDadosSimulacao] = useState<DadosSimulacaoMargem>({});
   const [sessaoId, setSessaoId] = useState<string | null>(null);
   const [canaisSugeridosPendentes, setCanaisSugeridosPendentes] = useState<string[]>([]);
   // posicionamento segue fora do escopo do wizard de pendências (Spec-
@@ -818,6 +803,9 @@ export default function OnboardingPage() {
   // pendências de volume/margem), o valor atualizado vem de
   // responder-pendencias e prevalece (ver irParaRevisaoIa).
   const [estimativasBase, setEstimativasBase] = useState<Omit<EstimativasIa, "faturamento_medio_mensal" | "custo_fixo_mensal"> | null>(null);
+
+  const tributacaoWizard = useTributacaoOnboarding(estimativasBase ? dadosFactuais?.regime : undefined,
+    dadosFactuais?.canais ?? [], String(estimativasBase?.posicionamento.valor ?? "medio"));
 
   const irParaRevisaoIa = (
     logId: string,
@@ -865,6 +853,7 @@ export default function OnboardingPage() {
 
       const data = await res.json();
 
+      if (data.dados_simulacao) setDadosSimulacao(data.dados_simulacao);
       if (data.status === "pendente") {
         setPendencias(data.pendencias_restantes);
         return;
@@ -933,6 +922,11 @@ export default function OnboardingPage() {
       setCanaisSugeridosPendentes(data.canais_sugeridos ?? []);
 
       const estimativasResolvidas = data.estimativas ?? data.estimativas_resolvidas;
+      setDadosSimulacao({
+        ...data.dados_simulacao,
+        ...(estimativasResolvidas.custo_fixo_mensal?.valor != null ? { custo_fixo_mensal: Number(estimativasResolvidas.custo_fixo_mensal.valor) } : {}),
+        ...(estimativasResolvidas.volume_vendas_esperado?.valor != null ? { volume_vendas_esperado: Number(estimativasResolvidas.volume_vendas_esperado.valor) } : {}),
+      });
       setEstimativasBase({
         posicionamento: estimativasResolvidas.posicionamento,
         margem_lucro_desejada: estimativasResolvidas.margem_lucro_desejada,
@@ -1070,6 +1064,7 @@ export default function OnboardingPage() {
       // o array de pendências fica menor que o índice atual.
       key={pendencias.map((p) => p.id).join("|")}
       pendencias={pendencias}
+      dadosSimulacao={{ ...tributacaoWizard, ...dadosSimulacao }}
       onConcluir={handleResponderPendencias}
       onRevisarManualmente={handleRevisarManualmente}
       isLoading={isLoading}

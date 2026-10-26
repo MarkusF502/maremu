@@ -5,7 +5,7 @@ const HELP_ARTICLES: Record<string, { titulo: string; o_que_e: string; como_desc
     titulo: "Posicionamento de Mercado",
     o_que_e: "É a categoria que define o perfil da sua loja perante o cliente: Popular (foco em preço baixo e alto volume), Médio (equilíbrio entre preço e qualidade) ou Premium (peças exclusivas, atendimento diferenciado e ticket mais alto).",
     como_descobrir: "Observe onde sua loja está localizada, o perfil do seu cliente atual, o valor médio das peças que você vende e como você se compara aos concorrentes da região. Se a maioria das suas vendas depende de preço baixo, você é Popular. Se seus clientes pagam mais por exclusividade e atendimento, você é Premium.",
-    por_que_importa: "Esse posicionamento influencia diretamente a Margem de Lucro Desejada e o Preço Piso sugerido pelo sistema. Lojas Populares trabalham com margens menores e giro alto, enquanto lojas Premium sustentam margens maiores com giro mais baixo."
+    por_que_importa: "Esse posicionamento orienta a sugestão inicial de lucro limpo do Maremu. Você escolhe sua meta com a ajuda da tradução ao lado do campo. O preço piso cobre os custos e não inclui lucro."
   },
   regime_tributario: {
     titulo: "Regime Tributário",
@@ -20,10 +20,10 @@ const HELP_ARTICLES: Record<string, { titulo: string; o_que_e: string; como_desc
     por_que_importa: "O sistema pega esse valor total e divide pela sua estimativa de vendas para saber quantos reais cada peça de roupa precisa ajudar a pagar para manter a loja de portas abertas."
   },
   margem_lucro_desejada: {
-    titulo: "Margem de Lucro Desejada",
-    o_que_e: "É o percentual de lucro líquido que você quer que sobre no seu bolso após pagar o custo de compra da peça, os impostos, as taxas de cartão e a parcela do custo fixo.",
-    como_descobrir: "Isso depende muito do seu público e posicionamento. Lojas populares (focadas em volume) costumam girar em torno de 20% a 30%. Lojas premium (peças exclusivas) podem trabalhar com 50% ou mais.",
-    por_que_importa: "É o coração da sua precificação inteligente. O sistema vai usar esse número exato como alvo para calcular o 'Preço Piso' de todos os seus produtos."
+    titulo: "Lucro limpo desejado",
+    o_que_e: "É o lucro limpo, em percentual do preço de venda, depois de pagar a peça, os impostos, as taxas e a parte do custo fixo da loja.",
+    como_descobrir: "O Maremu sugere um valor inicial pelo posicionamento da sua loja. A tradução ao lado do campo ajuda a escolher e a testar com uma peça sua. Vender pelo dobro do custo não quer dizer 50% de lucro limpo: depois das contas da loja e dos impostos, pode sobrar bem menos.",
+    por_que_importa: "O preço piso é o preço sem lucro, que cobre os custos. A margem define o preço de venda sugerido acima dele."
   },
   aliquota_efetiva: {
     titulo: "Alíquota de Imposto",

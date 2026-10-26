@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
       <div className={`${inter.className} flex h-screen overflow-hidden bg-[#eef2f9]`}>
         <Sidebar />
-        <main className="relative flex-1 overflow-y-auto">
+        <main className="relative min-w-0 flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

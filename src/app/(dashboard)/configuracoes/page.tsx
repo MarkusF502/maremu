@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import { HELP_ARTICLES } from "./help";
+import MargemLiquidaInput from "@/src/components/MargemLiquidaInput";
+import { margemLiquidaValida } from "@/src/lib/margem-liquida";
 import CurrencyInput from "@/src/components/CurrencyInput";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────
@@ -247,7 +249,7 @@ function PainelDeAjuda({ artigoKey, onClose }: { artigoKey: string | null; onClo
 
 function BarraResumo({ loja }: { loja: LojaConfig }) {
   return (
-    <div className="flex flex-wrap items-center gap-7.5 border-b border-[#e4eaf4] bg-white/90 px-8.5 py-3.25 backdrop-blur">
+    <div className="flex flex-wrap items-center gap-7.5 border-b border-[#e4eaf4] bg-white/90 px-4 sm:px-8.5 py-3.25 backdrop-blur">
       <div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#94a3b8]">Custo fixo / peça</p>
         <p className="mt-1 text-sm font-extrabold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -255,7 +257,7 @@ function BarraResumo({ loja }: { loja: LojaConfig }) {
         </p>
       </div>
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#94a3b8]">Margem alvo</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#94a3b8]">Lucro limpo alvo</p>
         <p className="mt-1 text-sm font-extrabold text-[#0080ff]" style={{ fontVariantNumeric: 'tabular-nums' }}>{pct(loja.margem_lucro_desejada)}%</p>
       </div>
       <div>
@@ -278,6 +280,7 @@ export default function ConfiguracoesPage() {
   const [original, setOriginal] = useState<ConfigState | null>(null);
   const [loadError, setLoadError] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [margemInviavel, setMargemInviavel] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [artigoAberto, setArtigoAberto] = useState<string | null>(null);
 
@@ -314,7 +317,7 @@ export default function ConfiguracoesPage() {
   const hasChanges = config && original ? JSON.stringify(config) !== JSON.stringify(original) : false;
 
   const handleSalvar = async () => {
-    if (!config) return;
+    if (!config || margemInviavel || !margemLiquidaValida(config.loja.margem_lucro_desejada)) return;
     setSaveStatus("saving");
     setSaveError("");
 
@@ -389,7 +392,7 @@ export default function ConfiguracoesPage() {
     <div className="mm-screen-in">
       <BarraResumo loja={loja} />
 
-      <div className="max-w-190 px-8.5 pb-15 pt-7.5">
+      <div className="max-w-190 px-4 sm:px-8.5 pb-15 pt-7.5">
         <div className="mb-5.5">
           <p className="text-xs font-bold uppercase tracking-[.09em] text-[#0080ff]">Sua loja</p>
           <h1 className="mt-1.5 text-[29px] font-extrabold tracking-tight text-[#0f172a]">Configurações</h1>
@@ -418,7 +421,7 @@ export default function ConfiguracoesPage() {
               />
             </label>
 
-            <div className="mt-4 grid grid-cols-2 gap-3.5">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <FieldLabel label="Posicionamento" helpKey="posicionamento_mercado" onOpenHelp={setArtigoAberto} />
                 <select
@@ -457,13 +460,13 @@ export default function ConfiguracoesPage() {
 
           <SectionCard
             title="Dados financeiros"
-            description="Valores que compõem o cálculo do preço piso de cada produto"
+            description="Valores usados no preço piso e no preço de venda sugerido"
             icon={DollarSign}
             open={secAberta.financeiro}
             onToggle={() => toggleSecao("financeiro")}
             index={1}
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FieldLabel label="Custo fixo mensal" origem={loja.custo_fixo_origem} helpKey="custo_fixo_mensal" onOpenHelp={setArtigoAberto} />
                 <div className={fieldInputClass}>
@@ -476,20 +479,13 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div>
-                <FieldLabel label="Margem desejada" helpKey="margem_lucro_desejada" onOpenHelp={setArtigoAberto} />
-                <div className={fieldInputClass}>
-                  <input
-                    type="number"
-                    step={1}
-                    min={1}
-                    max={99}
-                    value={Number(pct(loja.margem_lucro_desejada))}
-                    onChange={(e) => setLoja({ margem_lucro_desejada: Number(e.target.value) / 100 })}
-                    className={bareInputClass}
-                  />
-                  <span className="text-[12.5px] font-bold text-[#94a3b8]">%</span>
+              <div className="sm:col-span-2">
+                <div className="mb-2 flex justify-end">
+                  <EntenderButton onClick={() => setArtigoAberto("margem_lucro_desejada")} />
                 </div>
+                <MargemLiquidaInput value={loja.margem_lucro_desejada}
+                  onChange={(margem) => setLoja({ margem_lucro_desejada: margem })}
+                  onInviavelChange={setMargemInviavel} />
               </div>
 
               <div>
@@ -526,7 +522,7 @@ export default function ConfiguracoesPage() {
                 </div>
               </div>
 
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <FieldLabel label="Faturamento médio mensal" helpKey="faturamento_medio_mensal" onOpenHelp={setArtigoAberto} />
                 <div className={fieldInputClass}>
                   <span className="text-[12.5px] font-bold text-[#94a3b8]">R$</span>
@@ -540,7 +536,7 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="mt-4.5 rounded-[13px] border border-[#e2ebfa] bg-[#f5f8fe] px-4.5 py-4">
-              <p className="mb-3 text-[10.5px] font-bold uppercase tracking-[.11em] text-[#8494ad]">Impacto estimado no preço piso</p>
+              <p className="mb-3 text-[10.5px] font-bold uppercase tracking-[.11em] text-[#8494ad]">Referências da precificação</p>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-[11.5px] text-[#94a3b8]">Custo fixo / peça</p>
@@ -553,7 +549,7 @@ export default function ConfiguracoesPage() {
                   <p className="mt-1.25 text-[15px] font-extrabold text-[#0f172a]" style={{ fontVariantNumeric: 'tabular-nums' }}>{(loja.aliquota_efetiva * 100).toFixed(1)}%</p>
                 </div>
                 <div>
-                  <p className="text-[11.5px] text-[#94a3b8]">Margem alvo</p>
+                  <p className="text-[11.5px] text-[#94a3b8]">Lucro limpo alvo</p>
                   <p className="mt-1.25 text-[15px] font-extrabold text-[#0080ff]" style={{ fontVariantNumeric: 'tabular-nums' }}>{pct(loja.margem_lucro_desejada)}%</p>
                 </div>
               </div>
@@ -641,7 +637,7 @@ export default function ConfiguracoesPage() {
         )}
 
         {hasChanges && (
-          <div className="mm-rise-in sticky bottom-5 mt-4.5 flex items-center justify-between gap-4 rounded-[14px] border border-[#dfe6f2] bg-white px-5 py-3.75 shadow-[0_18px_40px_-22px_rgba(15,23,42,.55)]">
+          <div className="mm-rise-in sticky bottom-5 mt-4.5 flex flex-wrap items-center justify-between gap-4 rounded-[14px] border border-[#dfe6f2] bg-white px-5 py-3.75 shadow-[0_18px_40px_-22px_rgba(15,23,42,.55)]">
             {saveStatus === "saved" ? (
               <p className="flex items-center gap-2 text-[13.5px] font-bold text-[#047857]">
                 <CheckCircle2 size={16} />
@@ -650,7 +646,7 @@ export default function ConfiguracoesPage() {
             ) : (
               <p className="text-[13.5px] text-[#64748b]">Há alterações não salvas</p>
             )}
-            <div className="ml-auto flex gap-2.5">
+            <div className="ml-auto flex flex-wrap gap-2.5">
               <button
                 type="button"
                 onClick={handleDescartar}
@@ -662,7 +658,7 @@ export default function ConfiguracoesPage() {
               <button
                 type="button"
                 onClick={handleSalvar}
-                disabled={saveStatus === "saving"}
+                disabled={saveStatus === "saving" || margemInviavel || !margemLiquidaValida(loja.margem_lucro_desejada)}
                 className="mm-hover flex items-center gap-2 rounded-[11px] bg-[#0080ff] px-5 py-2.75 text-[13.5px] font-bold text-white hover:bg-[#1a3673] disabled:opacity-50"
               >
                 {saveStatus === "saving" ? (
