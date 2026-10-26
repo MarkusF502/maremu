@@ -55,9 +55,9 @@ export default function MargemLiquidaInput({
   const inputClass = "w-full min-w-0 rounded-lg border bg-white px-3 py-2.5 text-sm text-[#1E293B] outline-none focus:ring-2 focus:ring-[#2563EB]/20 disabled:opacity-50";
 
   return (
-    <div className="min-w-0 space-y-2">
+    <div className="w-full min-w-0 max-w-full space-y-2">
       <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wide text-slate-500">Lucro limpo desejado</label>
-      <p id={`${id}-explicacao`} className="text-xs leading-relaxed text-slate-500">
+      <p id={`${id}-explicacao`} className="max-w-full whitespace-normal wrap-break-word text-xs leading-relaxed text-slate-500">
         É o que sobra para você de cada venda, depois de pagar a peça, as contas da loja e os impostos.
       </p>
       {sugestao && !editado && <p className="text-xs text-[#2563EB]">Sugestão para o seu posicionamento</p>}
@@ -78,11 +78,11 @@ export default function MargemLiquidaInput({
         </div>
       </div>
       <p id={`${id}-faixa`} className="text-xs text-red-600">{foraDaFaixa ? "Informe um percentual de 1% a 60%." : ""}</p>
-      <div id={`${id}-traducao`} aria-live="polite" aria-atomic="true" className={`text-xs leading-relaxed ${inviavel ? "text-red-600" : "text-slate-600"}`}>
-        {simulacao?.viavel === true && <p>
-          A cada R$ 100 vendidos, sobram {moeda(simulacao.lucro_a_cada_100)} para você.
-          {" "}Uma peça que custa {moeda(Number(custo))} sairia por {moeda(simulacao.preco)}, cerca de {numero(simulacao.multiplo_do_custo)} vez o custo.
-        </p>}
+      <div id={`${id}-traducao`} aria-live="polite" aria-atomic="true" className={`min-w-0 max-w-full whitespace-normal wrap-anywhere text-xs leading-relaxed ${simulacao ? "rounded-lg border border-slate-200 bg-slate-50 p-3" : ""} ${inviavel ? "text-red-600" : "text-slate-600"}`}>
+        {simulacao?.viavel === true && <div className="space-y-1">
+          <p>A cada R$ 100 vendidos, sobram {moeda(simulacao.lucro_a_cada_100)} para você.</p>
+          <p>Uma peça que custa {moeda(Number(custo))} sairia por {moeda(simulacao.preco)}, cerca de {numero(simulacao.multiplo_do_custo)} vez o custo.</p>
+        </div>}
         {simulacao?.viavel === false && <p>Com os custos da sua loja, o lucro limpo máximo possível é de {numero(simulacao.margem_maxima * 100, 4)}%.</p>}
       </div>
     </div>
