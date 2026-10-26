@@ -143,7 +143,7 @@ export default function PendenciaWizardModal({
             ) : pendencia.id === "margem_lucro_desejada" ? (
               <MargemLiquidaInput value={Number(valorAtual) / 100}
                 onChange={(valor) => setValorLivre(valor ? String(valor * 100) : "0")}
-                dadosSimulacao={dadosSimulacao} disabled={isLoading}
+                dadosSimulacao={dadosSimulacao ?? {}} disabled={isLoading}
                 sugestao={pendencia.valor_sugerido != null && valorLivre === ""}
                 onInviavelChange={setMargemInviavel} />
             ) : (

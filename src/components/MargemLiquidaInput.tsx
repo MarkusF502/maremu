@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import CurrencyInput from "./CurrencyInput";
-import { DadosSimulacaoMargem, SimulacaoMargem, margemLiquidaValida, simularMargemLiquida } from "@/src/lib/margem-liquida";
+import { DadosSimulacaoMargem, SimulacaoMargem, dadosSimulacaoCompletos, margemLiquidaValida, simularMargemLiquida } from "@/src/lib/margem-liquida";
 
 const moeda = (valor: number) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const numero = (valor: number, casas = 2) => valor.toLocaleString("pt-BR", { maximumFractionDigits: casas });
@@ -23,8 +23,10 @@ export default function MargemLiquidaInput({
   const [custo, setCusto] = useState("50");
   const [resultado, setResultado] = useState<{ chave: string; simulacao: SimulacaoMargem | null } | null>(null);
   const { custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal } = dadosSimulacao ?? {};
-  const chave = JSON.stringify([value, custo, custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal]);
-  const simulacao = resultado?.chave === chave ? resultado.simulacao : null;
+  // Sem contexto explícito, configurações usa os dados da loja na API.
+  const contextoCompleto = dadosSimulacao === undefined || dadosSimulacaoCompletos(dadosSimulacao);
+  const chave = JSON.stringify([contextoCompleto, value, custo, custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal]);
+  const simulacao = contextoCompleto && resultado?.chave === chave ? resultado.simulacao : null;
   const inviavel = simulacao?.viavel === false;
   const foraDaFaixa = !margemLiquidaValida(value);
 
@@ -33,7 +35,7 @@ export default function MargemLiquidaInput({
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       onInviavelChange?.(false);
-      if (!margemLiquidaValida(value) || !Number.isFinite(Number(custo)) || Number(custo) <= 0) return;
+      if (!contextoCompleto || !margemLiquidaValida(value) || !Number.isFinite(Number(custo)) || Number(custo) <= 0) return;
       try {
         const resposta = await simularMargemLiquida(value, Number(custo), {
           custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal,
@@ -48,7 +50,7 @@ export default function MargemLiquidaInput({
       }
     }, 300);
     return () => { ativo = false; clearTimeout(timer); controller.abort(); };
-  }, [value, custo, custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal, chave, onInviavelChange]);
+  }, [contextoCompleto, value, custo, custo_fixo_mensal, volume_vendas_esperado, aliquota_efetiva, taxa_canal, chave, onInviavelChange]);
 
   const inputClass = "w-full min-w-0 rounded-lg border bg-white px-3 py-2.5 text-sm text-[#1E293B] outline-none focus:ring-2 focus:ring-[#2563EB]/20 disabled:opacity-50";
 

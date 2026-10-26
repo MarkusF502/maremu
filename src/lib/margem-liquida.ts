@@ -7,6 +7,13 @@ export type DadosSimulacaoMargem = {
   taxa_canal?: number;
 };
 
+export function dadosSimulacaoCompletos(dados: DadosSimulacaoMargem): boolean {
+  return Number.isFinite(dados.custo_fixo_mensal) && dados.custo_fixo_mensal! >= 0
+    && Number.isInteger(dados.volume_vendas_esperado) && dados.volume_vendas_esperado! > 0
+    && Number.isFinite(dados.aliquota_efetiva) && dados.aliquota_efetiva! >= 0 && dados.aliquota_efetiva! <= 1
+    && Number.isFinite(dados.taxa_canal) && dados.taxa_canal! >= 0 && dados.taxa_canal! <= 1;
+}
+
 export type SimulacaoMargem =
   | { viavel: true; preco: number; preco_piso: number; multiplo_do_custo: number;
       lucro_por_peca: number; lucro_a_cada_100: number }

@@ -804,9 +804,6 @@ export default function OnboardingPage() {
   // responder-pendencias e prevalece (ver irParaRevisaoIa).
   const [estimativasBase, setEstimativasBase] = useState<Omit<EstimativasIa, "faturamento_medio_mensal" | "custo_fixo_mensal"> | null>(null);
 
-  const tributacaoWizard = useTributacaoOnboarding(estimativasBase ? dadosFactuais?.regime : undefined,
-    dadosFactuais?.canais ?? [], String(estimativasBase?.posicionamento.valor ?? "medio"));
-
   const irParaRevisaoIa = (
     logId: string,
     custoFixoMensal: number,
@@ -853,7 +850,7 @@ export default function OnboardingPage() {
 
       const data = await res.json();
 
-      if (data.dados_simulacao) setDadosSimulacao(data.dados_simulacao);
+      setDadosSimulacao(data.dados_simulacao ?? {});
       if (data.status === "pendente") {
         setPendencias(data.pendencias_restantes);
         return;
@@ -922,11 +919,7 @@ export default function OnboardingPage() {
       setCanaisSugeridosPendentes(data.canais_sugeridos ?? []);
 
       const estimativasResolvidas = data.estimativas ?? data.estimativas_resolvidas;
-      setDadosSimulacao({
-        ...data.dados_simulacao,
-        ...(estimativasResolvidas.custo_fixo_mensal?.valor != null ? { custo_fixo_mensal: Number(estimativasResolvidas.custo_fixo_mensal.valor) } : {}),
-        ...(estimativasResolvidas.volume_vendas_esperado?.valor != null ? { volume_vendas_esperado: Number(estimativasResolvidas.volume_vendas_esperado.valor) } : {}),
-      });
+      setDadosSimulacao(data.dados_simulacao ?? {});
       setEstimativasBase({
         posicionamento: estimativasResolvidas.posicionamento,
         margem_lucro_desejada: estimativasResolvidas.margem_lucro_desejada,
@@ -1064,7 +1057,7 @@ export default function OnboardingPage() {
       // o array de pendências fica menor que o índice atual.
       key={pendencias.map((p) => p.id).join("|")}
       pendencias={pendencias}
-      dadosSimulacao={{ ...tributacaoWizard, ...dadosSimulacao }}
+      dadosSimulacao={dadosSimulacao}
       onConcluir={handleResponderPendencias}
       onRevisarManualmente={handleRevisarManualmente}
       isLoading={isLoading}

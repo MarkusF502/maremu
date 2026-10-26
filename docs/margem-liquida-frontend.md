@@ -17,9 +17,9 @@ O onboarding tradicional e o wizard identificam a margem inicial como sugestão 
 - Tradicional: usa custo fixo, volume, alíquota e a maior taxa dos canais já disponíveis na revisão.
 - Revisão IA: usa custo fixo e volume atualmente editados. Alíquota e taxas vêm do endpoint determinístico existente `/api/loja/onboarding/inferir`; somente as premissas tributárias são aproveitadas, sem substituir os custos descritos pelo lojista. A maior taxa é selecionada entre os canais recebidos da API.
 - Configurações: envia somente margem e custo de exemplo. Custos e taxas são os salvos na loja, conforme o contrato solicitado.
-- Wizard: aceita os dados conhecidos da análise e o bloco opcional `dados_simulacao` das respostas de análise/pendências. As premissas tributárias também podem vir do endpoint determinístico acima.
+- Wizard: utiliza exclusivamente `dados_simulacao` devolvido pelo backend em cada rodada, sem preencher lacunas com inferências ou dados antigos. Os quatro campos precisam estar presentes e válidos para consultar a simulação. Se algum faltar, mantém o campo editável, sem tradução nem requisição de simulação. Configurações continua sem contexto explícito, usando a loja salva na API.
 
-**Dependência pendente:** a implementação atual do `maremu-api` devolve custo fixo e volume como nulos enquanto houver qualquer pendência, inclusive a própria margem. Portanto, para traduzir no wizard com os valores efetivamente resolvidos, a API precisa expor esses valores antes da conclusão. Foi solicitada autorização para complementar o backend; ele não foi alterado nesta tarefa. O consumidor está preparado para o seguinte bloco adicional:
+**Integração concluída:** o complemento autorizado no `maremu-api` expõe os valores resolvidos antes de perguntar a margem, que agora é a última pendência, inclusive depois da checagem cruzada. O bloco tem o seguinte formato (campos ainda pendentes são omitidos):
 
 ```json
 {
@@ -32,11 +32,11 @@ O onboarding tradicional e o wizard identificam a margem inicial como sugestão 
 }
 ```
 
-Sem esses dados ou uma loja já cadastrada, a API de simulação retorna 422 no wizard; o campo continua funcionando, sem tradução. O teste de tradução nesse ponto interceptou esse bloco adicional, não representa integração completa com o backend atual. Os outros pontos não dependem desse complemento.
+O frontend substitui o contexto a cada resposta da API, impedindo que campos omitidos em uma rodada reutilizem valores de uma rodada anterior. A igualdade entre o preço simulado com esse bloco e o motor para a loja confirmada foi verificada nos testes de integração da API para os três regimes tributários.
 
 ## Decisões adicionais
 
-- O endpoint determinístico de inferência é reutilizado para obter premissas tributárias na revisão IA; não chama IA nem persiste loja. A faixa enviada é `ate_10k`, pois a API atual define alíquota apenas por regime. Se esse contrato passar a considerar faixa, esse helper deverá acompanhar a mudança.
+- O endpoint determinístico de inferência é reutilizado para obter premissas tributárias somente na revisão IA (não no wizard); não chama IA nem persiste loja. A faixa enviada é `ate_10k`, pois a API atual define alíquota apenas por regime. Se esse contrato passar a considerar faixa, esse helper deverá acompanhar a mudança.
 - A barra lateral fixa de 252 px tornava as configurações inutilizáveis em 390×844. Em telas menores ela agora mostra ícones, preservando os nomes acessíveis; em desktop mantém texto e largura originais. As configurações passam a usar uma coluna no celular, com espaçamentos menores, e o conteúdo principal permite encolhimento.
 - Títulos da ajuda e do resumo financeiro que ainda associavam a margem ao preço piso foram alinhados ao conceito de lucro limpo.
 - O exemplo numérico do pedido foi tratado como ilustrativo; a interface exibe os números devolvidos pela API, sem valores de preço fixos.
@@ -49,3 +49,9 @@ Sem esses dados ou uma loja já cadastrada, a API de simulação retorna 422 no 
 - Em cada ponto: tradução normal, custo de exemplo alterado, inviabilidade e marcação do campo, endpoint 503, resposta antiga mais lenta descartada, debounce de 300 ms, percentual fora da faixa, largura e campo utilizável em 390×844. Capturas móveis inspecionadas visualmente.
 - Configurações: confirmado que o request não envia custos nem taxas. Tradicional: sugestão de posicionamento preenchida e identificada.
 - `git diff --check`: sem erros.
+
+## Verificação do complemento autorizado
+
+- API: contexto sem valores provisórios, margem após checagem cruzada e preço igual ao motor para a loja confirmada nos três regimes. Suíte completa: 239 passaram e as mesmas 8 falhas antigas.
+- Frontend: `npm run build` passou; `npm run lint` manteve os mesmos 7 problemas antigos, sem novos. `tsc --noEmit` passou.
+- Navegador: 42 verificações passaram. Além dos 38 cenários anteriores, foi omitido individualmente cada um dos quatro campos de `dados_simulacao`: campo continuou editável, tradução vazia e nenhuma requisição de simulação. Todas as interceptações e scripts ficaram em `/tmp`, sem mocks commitados.
