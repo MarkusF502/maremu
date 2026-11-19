@@ -385,21 +385,6 @@ export default function ProdutosPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[#0f172a]">{product.nome}</p>
                     <p className="mt-0.5 text-[11.5px] text-[#94a3b8]">{grade(product)}</p>
-                    {product.recomendacao?.difere_do_atual && (
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium leading-4 text-slate-600">
-                          Sugestão: {CENARIO_EM_FRASE[product.recomendacao.cenario_recomendado]}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setReprecificar(product)}
-                          aria-label={`Reprecificar ${product.nome}`}
-                          className="mm-hover cursor-pointer rounded-md px-1 text-[11.5px] font-bold text-[#0080ff] underline-offset-2 hover:underline"
-                        >
-                          Reprecificar
-                        </button>
-                      </div>
-                    )}
                   </div>
                 </div>
                 <div className="truncate text-[13.5px] text-[#475569]">{product.categoria?.nome || "—"}</div>
@@ -435,6 +420,23 @@ export default function ProdutosPage() {
                     <Trash2 size={16} strokeWidth={1.6} />
                   </button>
                 </div>
+                {/* Faixa própria na linha, alinhada ao nome: selo e botão nunca quebram,
+                    nem na coluna estreita do produto. */}
+                {product.recomendacao?.difere_do_atual && (
+                  <div className="-mt-1.5 flex min-w-0 items-center gap-2 pl-11.5" style={{ gridColumn: '1 / -1' }}>
+                    <span className="inline-flex shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium leading-4 text-slate-600">
+                      Sugestão: {CENARIO_EM_FRASE[product.recomendacao.cenario_recomendado]}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setReprecificar(product)}
+                      aria-label={`Reprecificar ${product.nome}`}
+                      className="mm-hover shrink-0 cursor-pointer whitespace-nowrap rounded-md px-1 text-[11.5px] font-bold text-[#0080ff] underline-offset-2 hover:underline"
+                    >
+                      Reprecificar
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })
