@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import CurrencyInput from "@/src/components/CurrencyInput";
@@ -12,6 +12,11 @@ import {
   type ComposicaoPreco,
   type FaixaMercadoDisponivel,
 } from "@/src/lib/mercado";
+import {
+  ORIGEM_EM_FRASE,
+  recomendacaoValida,
+  type RecomendacaoCenario,
+} from "@/src/lib/recomendacao";
 
 export type CenarioIA = {
   id: "cenario_1" | "cenario_2" | "cenario_3";
@@ -49,7 +54,9 @@ export default function PricingModal({
   onRecarregar,
   onSalvar,
   close,
+  recomendacao = null,
 }: {
+  recomendacao?: RecomendacaoCenario | null;
   composicao?: ComposicaoPreco | null;
   faixaMercado: FaixaMercadoDisponivel | null;
   precoPiso: string;
@@ -68,6 +75,14 @@ export default function PricingModal({
   const posicaoManual = faixaMercado
     ? posicaoPrecoMercado(preco, faixaMercado)
     : null;
+
+  // Indisponível ou inválida: o modal fica exatamente como antes. A
+  // recomendação só marca um cartão; nenhum cenário vem pré-selecionado, e o
+  // diagnóstico da faixa de mercado continua aparecendo, mesmo se apontar
+  // para o lado oposto.
+  const recomendacaoAtiva = recomendacaoValida(recomendacao);
+  const recomendado = (cenario: CenarioIA) =>
+    recomendacaoAtiva?.cenario_recomendado === cenario.tipo;
 
   useEffect(() => {
     const overflowAnterior = document.body.style.overflow;
@@ -159,9 +174,16 @@ export default function PricingModal({
                         : "border-[#e9eff8] bg-[#fbfcfe] hover:border-[#c9dcf7]"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center text-sm font-bold text-slate-900">
+                    <div className="flex items-center justify-between gap-2">
+                      {/* O selo fica dentro do título: é lido junto com ele e não depende de cor. */}
+                      <span className="flex flex-wrap items-center gap-1.5 text-sm font-bold text-slate-900">
                         {TIPO_LABEL[cenario.tipo]}
+                        {recomendado(cenario) && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium leading-4 text-slate-600">
+                            <Star size={11} strokeWidth={2} aria-hidden="true" />
+                            Recomendado
+                          </span>
+                        )}
                       </span>
                       <span
                         className={`text-[15px] font-extrabold tabular-nums ${
@@ -174,6 +196,14 @@ export default function PricingModal({
                     <p className="mt-1 text-[12.5px] leading-relaxed text-slate-500">
                       {cenario.explicacao}
                     </p>
+                    {recomendacaoAtiva && recomendado(cenario) && (
+                      <p className="mt-2 border-t border-slate-100 pt-2 text-[12px] leading-relaxed text-slate-600">
+                        {recomendacaoAtiva.motivo}{" "}
+                        <span className="text-slate-400">
+                          ({ORIGEM_EM_FRASE[recomendacaoAtiva.origem_recomendacao]}.)
+                        </span>
+                      </p>
+                    )}
                     {posicao && (
                       <div className="mt-2"><PosicaoMercado posicao={posicao} /></div>
                     )}

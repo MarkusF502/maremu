@@ -16,13 +16,19 @@ import {
 } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import CurrencyInput from "@/src/components/CurrencyInput";
+import { CENARIO_EM_FRASE, type RecomendacaoResumo } from "@/src/lib/recomendacao";
+import ReprecificarProduto, { type PrecoConfirmado } from "./ReprecificarProduto";
 
 type Produto = {
   id: string;
   nome: string;
+  categoria_id?: string;
   categoria?: { nome: string };
   custo_aquisicao: string;
+  preco_piso?: string | null;
   preco_venda_atual?: string | null;
+  preco_origem?: string | null;
+  recomendacao?: RecomendacaoResumo;
   variantes: { tamanho: string; quantidade_estoque: number; estoque_minimo_alerta: number }[];
 };
 type Categoria = { id: string; nome: string };
@@ -88,6 +94,7 @@ export default function ProdutosPage() {
   const [pendentesClassificacao, setPendentesClassificacao] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reprecificar, setReprecificar] = useState<Produto | null>(null);
 
   async function load(filtersToApply: Filtros = filters) {
     setLoading(true);
@@ -199,6 +206,26 @@ export default function ProdutosPage() {
       return;
     }
     setProducts((current) => current.filter(({ id }) => id !== product.id));
+  }
+
+  // Atualiza só a linha reprecificada, com o que o confirmar acabou de gravar.
+  // O tipo escolhido nesta rodada decide se a sugestão ainda difere.
+  function aplicarPrecoConfirmado(id: string, resultado: PrecoConfirmado) {
+    setProducts((current) =>
+      current.map((product) => {
+        if (product.id !== id) return product;
+        const recomendado = product.recomendacao?.cenario_recomendado;
+        return {
+          ...product,
+          preco_venda_atual: resultado.preco_final.toFixed(2),
+          preco_origem: resultado.cenario_escolhido === "manual" ? "manual" : `ia_${resultado.cenario_escolhido}`,
+          recomendacao: recomendado
+            ? { cenario_recomendado: recomendado, difere_do_atual: resultado.tipo_escolhido !== recomendado }
+            : product.recomendacao ?? null,
+        };
+      }),
+    );
+    setReprecificar(null);
   }
 
   function stock(product: Produto) {
@@ -358,6 +385,21 @@ export default function ProdutosPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-[#0f172a]">{product.nome}</p>
                     <p className="mt-0.5 text-[11.5px] text-[#94a3b8]">{grade(product)}</p>
+                    {product.recomendacao?.difere_do_atual && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium leading-4 text-slate-600">
+                          Sugestão: {CENARIO_EM_FRASE[product.recomendacao.cenario_recomendado]}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setReprecificar(product)}
+                          aria-label={`Reprecificar ${product.nome}`}
+                          className="mm-hover cursor-pointer rounded-md px-1 text-[11.5px] font-bold text-[#0080ff] underline-offset-2 hover:underline"
+                        >
+                          Reprecificar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="truncate text-[13.5px] text-[#475569]">{product.categoria?.nome || "—"}</div>
@@ -409,6 +451,17 @@ export default function ProdutosPage() {
           </div>
         )}
       </div>
+
+      {reprecificar && (
+        <ReprecificarProduto
+          produtoId={reprecificar.id}
+          categoriaId={reprecificar.categoria_id ?? null}
+          precoAtual={reprecificar.preco_venda_atual ?? null}
+          precoPiso={reprecificar.preco_piso ?? null}
+          onConfirmado={(resultado) => aplicarPrecoConfirmado(reprecificar.id, resultado)}
+          close={() => setReprecificar(null)}
+        />
+      )}
 
       {drawerOpen && createPortal(
         <>

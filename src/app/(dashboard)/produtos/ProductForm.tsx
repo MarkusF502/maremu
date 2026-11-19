@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, Tag, X } from "lucide-react";
 import { apiFetch } from "@/src/lib/api";
 import {
   CategoriaLoja,
@@ -17,6 +17,8 @@ import FaixaMercado from "@/src/components/FaixaMercado";
 import { fetchFaixaMercado, type ComposicaoPreco, type FaixaMercadoResposta } from "@/src/lib/mercado";
 import NovaCategoriaModal from "@/src/components/NovaCategoriaModal";
 import PricingModal from "./PricingModal";
+import ReprecificarProduto from "./ReprecificarProduto";
+import { recomendacaoValida, type RecomendacaoDisponivel } from "@/src/lib/recomendacao";
 
 type Category = CategoriaLoja;
 type Variante = { tamanho: string; cor: string; quantidade_estoque: number };
@@ -92,6 +94,11 @@ export default function ProductForm({ productId }: { productId?: string }) {
   const [cenarioEscolhido, setCenarioEscolhido] = useState<string>("manual");
   const [loadingCenarios, setLoadingCenarios] = useState(false);
   const [cenariosError, setCenariosError] = useState("");
+  const [recomendacao, setRecomendacao] = useState<RecomendacaoDisponivel | null>(null);
+  // Reprecificação de produto existente (página de edição).
+  const [reprecificando, setReprecificando] = useState(false);
+  const [precoPisoAtual, setPrecoPisoAtual] = useState<string | null>(null);
+  const [avisoPreco, setAvisoPreco] = useState("");
   // ────────────────────────────────────────────────────────────────
 
   function buildProductPayload(precoVendaAtual?: string) {
@@ -133,6 +140,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
           setCusto(produto.custo_aquisicao);
           setFreteUnitario(produto.frete_entrada_unitario);
           setPreco(produto.preco_venda_atual || "");
+          setPrecoPisoAtual(produto.preco_piso ?? null);
           setJaVendoNaLoja(
             produto.preco_venda_atual !== null &&
               produto.preco_venda_atual !== undefined,
@@ -182,6 +190,7 @@ export default function ProductForm({ productId }: { productId?: string }) {
     setLoadingCenarios(true);
     setCenariosError("");
     setComposicao(null);
+    setRecomendacao(null);
     try {
       const response = await apiFetch(`/api/precificacao/sugerir/${productId}`, {
         method: "POST",
@@ -191,10 +200,11 @@ export default function ProductForm({ productId }: { productId?: string }) {
           "Não foi possível gerar sugestões de preço agora. Você ainda pode definir manualmente.",
         );
       }
-      const data: { log_id: string; cenarios: CenarioIA[]; composicao?: ComposicaoPreco | null } = await response.json();
+      const data: { log_id: string; cenarios: CenarioIA[]; composicao?: ComposicaoPreco | null; recomendacao?: unknown } = await response.json();
       setLogId(data.log_id);
       setCenarios(data.cenarios);
       setComposicao(data.composicao ?? null);
+      setRecomendacao(recomendacaoValida(data.recomendacao));
     } catch (err) {
       setCenariosError(
         err instanceof Error ? err.message : "Erro ao buscar sugestões da IA.",
@@ -568,6 +578,30 @@ export default function ProductForm({ productId }: { productId?: string }) {
             />
           )}
 
+          {productId && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setAvisoPreco("");
+                  setReprecificando(true);
+                }}
+                className="mm-hover flex h-10.5 w-full items-center justify-center gap-2 rounded-[11px] border border-[#dfe6f2] bg-white text-[13px] font-bold text-[#334155] hover:border-[#0080ff] hover:text-[#0080ff]"
+              >
+                <Tag size={15} strokeWidth={1.8} aria-hidden="true" />
+                Reprecificar
+              </button>
+              <p className="mt-1.5 text-[11.5px] leading-relaxed text-[#8494ad]">
+                Gera os cenários com o custo já salvo deste produto.
+              </p>
+              <div aria-live="polite">
+                {avisoPreco && (
+                  <p className="mm-fade mt-2 text-[12px] font-semibold text-[#047857]">{avisoPreco}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={saving}
@@ -653,8 +687,25 @@ export default function ProductForm({ productId }: { productId?: string }) {
         document.body,
       )}
 
+      {reprecificando && productId && (
+        <ReprecificarProduto
+          produtoId={productId}
+          categoriaId={categoriaId || null}
+          precoAtual={preco || null}
+          precoPiso={precoPisoAtual}
+          onConfirmado={({ preco_final }) => {
+            setPreco(String(preco_final));
+            setJaVendoNaLoja(true);
+            setReprecificando(false);
+            setAvisoPreco(`Preço de ${money(preco_final)} salvo.`);
+          }}
+          close={() => setReprecificando(false)}
+        />
+      )}
+
       {priceModalOpen && (
         <PricingModal
+          recomendacao={recomendacao}
           composicao={composicao}
           faixaMercado={mercado?.categoriaId === categoriaId && mercado.faixa?.disponivel
             ? mercado.faixa
